@@ -1,101 +1,150 @@
 const vscode = require('vscode');
-const path = require('path');
-const fs = require('fs');
-const { exec } = require('child_process');
 
 function activate(context) {
-
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      'latex-visualizer.compilePanel',
-      () => compileAndShowPanel()
+      'latex-visualizer.markdownPreview',
+      () => openPreview(context)
     )
   );
 }
 
-function compileAndShowPanel() {
+function openPreview(context) {
   const editor = vscode.window.activeTextEditor;
-  if (!editor || editor.document.languageId !== 'latex') {
-    vscode.window.showErrorMessage('Ouvrez d’abord un fichier .tex');
+
+  if (!editor || editor.document.languageId !== 'markdown') {
+    vscode.window.showErrorMessage('Ouvrez d’abord un fichier Markdown (.md)');
     return;
   }
 
-  const texPath = editor.document.fileName;
-  const dir = path.dirname(texPath);
-  const file = path.basename(texPath);
-
-  exec(`pdflatex -interaction=nonstopmode "${file}"`, { cwd: dir }, (error, stdout, stderr) => {
-    if (error) {
-      vscode.window.showErrorMessage('Compilation LaTeX échouée');
-      console.error(stderr);
-      return;
-    }
-
-    const pdfPath = path.join(dir, file.replace(/\.tex$/, '.pdf'));
-    if (!fs.existsSync(pdfPath)) {
-      vscode.window.showErrorMessage('Le PDF généré est introuvable');
-      return;
-    }
-
-    openPdfPanel(pdfPath);
-  });
-}
-
-function openPdfPanel(pdfPath) {
   const panel = vscode.window.createWebviewPanel(
-    'latexPdfPanel',
-    'LaTeX PDF Preview',
+    'mdLatexMermaidPreview',
+    'Markdown + LaTeX + Mermaid',
     vscode.ViewColumn.One,
-    {
-      enableScripts: true,
-      localResourceRoots: [vscode.Uri.file(path.dirname(pdfPath))]
-    }
+    { enableScripts: true }
   );
 
-  // Transforme le chemin local en URI utilisable dans WebView
-  const pdfUri = panel.webview.asWebviewUri(vscode.Uri.file(pdfPath));
+  const nonce = getNonce();
 
-  panel.webview.html = `
+  function update() {
+    const text = editor.document.getText();
+    panel.webview.html = getHtml(text, nonce);
+  }
+
+  update();
+
+  
+  const saveListener = vscode.workspace.onDidSaveTextDocument(doc => {
+    if (doc === editor.document) {
+      update();
+    }
+  });
+
+  panel.onDidDispose(() => saveListener.dispose());
+}
+
+function getHtml(markdown, nonce) {
+  //echapement obligatoire pour les src
+  const escaped = markdown
+    .replace(/\\/g, '\\\\')
+    .replace(/`/g, '\\`')
+    .replace(/\$/g, '\\$');
+
+  return `
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>PDF Preview</title>
+
+  <meta http-equiv="Content-Security-Policy"
+    content="
+      default-src 'none';
+      style-src https://cdn.jsdelivr.net 'unsafe-inline';
+      script-src 'nonce-${nonce}' https://cdn.jsdelivr.net;
+      font-src https://cdn.jsdelivr.net;
+      img-src https://cdn.jsdelivr.net data:;
+    ">
+
+  <!-- KaTeX -->
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+
   <style>
-    body { margin:0; overflow:auto; background:#333; display:flex; justify-content:center; align-items:center; }
-    canvas { display:block; }
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 1.5rem;
+      background: #1e1e1e;
+      color: #ddd;
+    }
+    pre {
+      background: #252526;
+      padding: 1rem;
+      overflow-x: auto;
+    }
   </style>
 </head>
 <body>
-  <canvas id="pdf-canvas"></canvas>
-  
-  <!-- PDF.js -->
-  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.338/build/pdf.min.js"></script>
-  <script>
-    const url = "${pdfUri}";
 
-    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.338/build/pdf.worker.min.js";
+<div id="output"></div>
 
-    const canvas = document.getElementById('pdf-canvas');
-    const ctx = canvas.getContext('2d');
+<!-- Markdown -->
+<script nonce="${nonce}" src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-    fetch(url)
-      .then(res => res.arrayBuffer())
-      .then(data => {
-        pdfjsLib.getDocument({data}).promise.then(pdf => {
-          // Affiche la première page pour commencer
-          pdf.getPage(1).then(page => {
-            const viewport = page.getViewport({scale:1.5});
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            page.render({canvasContext: ctx, viewport: viewport});
-          });
-        });
-      });
-  </script>
+<!-- LaTeX -->
+<script nonce="${nonce}" src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script nonce="${nonce}" src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+<!-- Mermaid -->
+<script nonce="${nonce}" src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+
+<script nonce="${nonce}">
+  const markdown = \`${escaped}\`;
+  const output = document.getElementById('output');
+
+  // Markdown to HTML
+  output.innerHTML = marked.parse(markdown);
+
+  // LaTeX
+  renderMathInElement(output, {
+    delimiters: [
+      { left: "$$", right: "$$", display: true },
+      { left: "$", right: "$", display: false }
+    ]
+  });
+
+  //  Mermaid
+  mermaid.initialize({
+  startOnLoad: false,
+  theme: 'dark'
+});
+
+output.querySelectorAll('pre code.language-mermaid').forEach((block, i) => {
+  const parent = block.parentElement; // le <pre>
+  const graphDef = block.textContent;
+
+  const container = document.createElement('div');
+  container.className = 'mermaid';
+  container.textContent = graphDef;
+
+  parent.replaceWith(container);
+});
+
+mermaid.init(undefined, output.querySelectorAll('.mermaid'));
+</script>
+
 </body>
 </html>
 `;
+}
+
+function getNonce() {
+  const chars =
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let nonce = '';
+  for (let i = 0; i < 32; i++) {
+    nonce += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return nonce;
 }
 
 function deactivate() {}

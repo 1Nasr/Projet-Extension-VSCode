@@ -3,11 +3,11 @@
   "displayName": "Markdown Visualizer",
   "version": "0.0.1",
   "engines": {
-    "vscode": "^1.107.0"
+    "vscode": "^1.100.33714"
   },
   "activationEvents": [
     "onView:visualizerView",
-    "onCommand:markdown-visualizer.compilePanel"
+    "onCommand:markdown-visualizer.markdownPreview"
   ],
   "main": "./extension.js",
   "contributes": {
@@ -30,8 +30,8 @@
     },
     "commands": [
       {
-        "command": "latex-visualizer.compilePanel",
-        "title": "compilePanel LaTeX and Preview PDF"
+        "command": "latex-visualizer.markdownPreview",
+        "title": "markdownPreview LaTeX and Preview PDF"
       }
     ]
   },
@@ -52,6 +52,7 @@
     "katex": "^0.16.27",
     "markdown-it": "^14.1.0",
     "markdown-it-katex": "^2.0.3",
+    "marked": "^17.0.1",
     "puppeteer": "^24.33.0"
   }
 }
