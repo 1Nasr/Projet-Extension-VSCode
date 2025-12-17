@@ -1,21 +1,39 @@
 {
   "name": "markdown-visualizer",
-  "displayName": "MarkDown Visualizer",
-  "description": "",
+  "displayName": "Markdown Visualizer",
   "version": "0.0.1",
   "engines": {
-    "vscode": "^1.100.33714"
+    "vscode": "^1.107.0"
   },
-  "categories": [
-    "Other"
+  "activationEvents": [
+    "onView:visualizerView",
+    "onCommand:markdown-visualizer.compilePanel"
   ],
-  "activationEvents": [],
   "main": "./extension.js",
   "contributes": {
-    "commands": [{
-      "command": "markdown-visualizer.helloWorld",
-      "title": "Hello World"
-    }]
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "visualizerContainer",
+          "title": "Visualizer",
+          "icon": "$(preview)"
+        }
+      ]
+    },
+    "views": {
+      "visualizerContainer": [
+        {
+          "id": "visualizerView",
+          "name": "Visualizer"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "latex-visualizer.compilePanel",
+        "title": "compilePanel LaTeX and Preview PDF"
+      }
+    ]
   },
   "scripts": {
     "lint": "eslint .",
@@ -23,12 +41,17 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.107.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
-    "eslint": "^9.39.1",
+    "@types/vscode": "^1.107.0",
     "@vscode/test-cli": "^0.0.12",
-    "@vscode/test-electron": "^2.5.2"
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.39.1"
+  },
+  "dependencies": {
+    "katex": "^0.16.27",
+    "markdown-it": "^14.1.0",
+    "markdown-it-katex": "^2.0.3",
+    "puppeteer": "^24.33.0"
   }
 }
-
