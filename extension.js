@@ -1,4 +1,5 @@
 const vscode = require('vscode');
+const { Marp } = require('@marp-team/marp-core');
 
 function activate(context) {
   context.subscriptions.push(
@@ -19,7 +20,7 @@ function openPreview(context) {
 
   const panel = vscode.window.createWebviewPanel(
     'mdLatexMermaidPreview',
-    'Markdown + LaTeX + Mermaid',
+    'Markdown / Marp Preview',
     vscode.ViewColumn.One,
     { enableScripts: true }
   );
@@ -28,23 +29,63 @@ function openPreview(context) {
 
   function update() {
     const text = editor.document.getText();
-    panel.webview.html = getHtml(text, nonce);
+
+    if (isMarpDocument(text)) {
+      panel.webview.html = renderWithMarp(text);
+    } else {
+      panel.webview.html = getHtml(text, nonce);
+    }
   }
 
   update();
 
-  
   const saveListener = vscode.workspace.onDidSaveTextDocument(doc => {
-    if (doc === editor.document) {
-      update();
-    }
+    if (doc === editor.document) update();
   });
 
   panel.onDidDispose(() => saveListener.dispose());
 }
 
+// ─────────────────────────────────────────────────────────────
+// Marp
+// ─────────────────────────────────────────────────────────────
+
+function isMarpDocument(markdown) {
+  return (
+    markdown.includes('<!-- marp: true -->') ||
+    markdown.split('\n').some(l => l.trim() === '---')
+  );
+}
+
+function renderWithMarp(markdown) {
+  const marp = new Marp({
+    html: true,
+    math: 'katex'
+  });
+
+  const { html, css } = marp.render(markdown);
+
+  return `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<style>
+${css}
+body { background: #1e1e1e; }
+</style>
+</head>
+<body>
+${html}
+</body>
+</html>`;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Markdown + LaTeX + Mermaid
+// ─────────────────────────────────────────────────────────────
+
 function getHtml(markdown, nonce) {
-  //echapement obligatoire pour les src
   const escaped = markdown
     .replace(/\\/g, '\\\\')
     .replace(/`/g, '\\`')
@@ -54,96 +95,73 @@ function getHtml(markdown, nonce) {
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
+<meta charset="UTF-8">
 
-  <meta http-equiv="Content-Security-Policy"
-    content="
-      default-src 'none';
-      style-src https://cdn.jsdelivr.net 'unsafe-inline';
-      script-src 'nonce-${nonce}' https://cdn.jsdelivr.net;
-      font-src https://cdn.jsdelivr.net;
-      img-src https://cdn.jsdelivr.net data:;
-    ">
+<meta http-equiv="Content-Security-Policy"
+content="default-src 'none';
+style-src https://cdn.jsdelivr.net 'unsafe-inline';
+script-src 'nonce-${nonce}' https://cdn.jsdelivr.net;
+font-src https://cdn.jsdelivr.net;
+img-src https://cdn.jsdelivr.net data:;">
 
-  <!-- KaTeX -->
-  <link rel="stylesheet"
-        href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      padding: 1.5rem;
-      background: #1e1e1e;
-      color: #ddd;
-    }
-    pre {
-      background: #252526;
-      padding: 1rem;
-      overflow-x: auto;
-    }
-  </style>
+<style>
+body {
+  font-family: system-ui, sans-serif;
+  padding: 1.5rem;
+  background: #1e1e1e;
+  color: #ddd;
+}
+pre {
+  background: #252526;
+  padding: 1rem;
+  overflow-x: auto;
+}
+</style>
 </head>
 <body>
 
 <div id="output"></div>
 
-<!-- Markdown -->
 <script nonce="${nonce}" src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-
-<!-- LaTeX -->
 <script nonce="${nonce}" src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <script nonce="${nonce}" src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
-
-<!-- Mermaid -->
 <script nonce="${nonce}" src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 
 <script nonce="${nonce}">
-  const markdown = \`${escaped}\`;
-  const output = document.getElementById('output');
+const markdown = \`${escaped}\`;
+const output = document.getElementById('output');
 
-  // Markdown to HTML
-  output.innerHTML = marked.parse(markdown);
+output.innerHTML = marked.parse(markdown);
 
-  // LaTeX
-  renderMathInElement(output, {
-    delimiters: [
-      { left: "$$", right: "$$", display: true },
-      { left: "$", right: "$", display: false }
-    ]
-  });
-
-  //  Mermaid
-  mermaid.initialize({
-  startOnLoad: false,
-  theme: 'dark'
+renderMathInElement(output, {
+  delimiters: [
+    { left: '$$', right: '$$', display: true },
+    { left: '$', right: '$', display: false }
+  ]
 });
 
-output.querySelectorAll('pre code.language-mermaid').forEach((block, i) => {
-  const parent = block.parentElement; // le <pre>
-  const graphDef = block.textContent;
+mermaid.initialize({ startOnLoad: false, theme: 'dark' });
 
+output.querySelectorAll('pre code.language-mermaid').forEach(block => {
   const container = document.createElement('div');
   container.className = 'mermaid';
-  container.textContent = graphDef;
-
-  parent.replaceWith(container);
+  container.textContent = block.textContent;
+  block.parentElement.replaceWith(container);
 });
 
 mermaid.init(undefined, output.querySelectorAll('.mermaid'));
 </script>
 
 </body>
-</html>
-`;
+</html>`;
 }
-
+ 
 function getNonce() {
-  const chars =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let nonce = '';
-  for (let i = 0; i < 32; i++) {
-    nonce += chars[Math.floor(Math.random() * chars.length)];
-  }
+  for (let i = 0; i < 32; i++) nonce += chars[Math.floor(Math.random() * chars.length)];
   return nonce;
 }
 

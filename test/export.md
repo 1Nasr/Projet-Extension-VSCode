@@ -1,16 +1,37 @@
+<!-- marp: true -->
+---
+marp: true
+theme: default
+paginate: true
+math: katex
+---
+
 # Démo complète
 
+Présentation générée avec **Marp**
+
+---
+
 ## Maths
-Inline : $E = mc^2$\
-$E = mc^3$
+
+### Inline
+
+$E = mc^2$  
+$E = mc^3$  
 $E = mc^4$
 
-Bloc :
+---
+
+### Bloc
+
 $$
-\int_0^\infty e^{-x^2} dx
+\int_0^\infty e^{-x^2} \, dx
 $$
 
+---
+
 ## Diagramme Mermaid
+
 ```mermaid
 classDiagram
     Animal <|-- Duck
@@ -33,3 +54,5 @@ classDiagram
       +bool is_wild
       +run()
     }
+```
+
