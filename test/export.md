@@ -1,4 +1,3 @@
-<!-- marp: true -->
 ---
 marp: true
 theme: default
@@ -11,9 +10,9 @@ math: katex
 Présentation générée avec **Marp**
 
 ---
+## Diagram
 
-## Maths
-
+--- 
 ### Inline
 
 $E = mc^2$  
@@ -30,29 +29,49 @@ $$
 
 ---
 
-## Diagramme Mermaid
+<style> 
+  pre.mermaid {
+    display: flex; 
+    width: 200%;
+  }
+   
+  pre.mermaid svg {
+    height: 800px;  
+    max-width: 200%;
+  }
+   
+  :root {
+    --mermaid-font-family: "Arial";
+  }
+</style> 
+ayuzfgazyufyugyuoaifzjnioazfjnio
+<pre class="mermaid" style="font-size: 24px;">
+gitGraph:
+    commit "Ashish"
+    branch newbranch
+    checkout newbranch
+    commit id:"1111"
+    commit tag:"d"
+    checkout main
+    commit type: HIGHLIGHT
+    commit
+    merge newbranch
+    commit
+    branch b2
+    commit
+</pre> 
 
-```mermaid
-classDiagram
-    Animal <|-- Duck
-    Animal <|-- Fish
-    Animal <|-- Zebra
-    Animal : +int age
-    Animal : +String gender
-    Animal: +isMammal()
-    Animal: +mate()
-    class Duck{
-      +String beakColor
-      +swim()
-      +quack()
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+mermaid.initialize({ startOnLoad: true });
+</script>
+<script> 
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log("HTML complet de la page :", document.documentElement.outerHTML);
+     
+    const mermaidBlock = document.querySelector('.mermaid');
+    if(mermaidBlock) {
+        console.log("Code Mermaid généré :", mermaidBlock.innerHTML);
     }
-    class Fish{
-      -int sizeInFeet
-      -canEat()
-    }
-    class Zebra{
-      +bool is_wild
-      +run()
-    }
-```
-
+  });
+</script>

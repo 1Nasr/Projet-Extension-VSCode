@@ -3,7 +3,7 @@
   "displayName": "Markdown Visualizer",
   "version": "0.0.1",
   "engines": {
-    "vscode": "^1.100.33714"
+    "vscode": "^1.108.1"
   },
   "activationEvents": [
     "onView:visualizerView",
@@ -50,10 +50,16 @@
   },
   "dependencies": {
     "@marp-team/marp-core": "^4.2.0",
+    "@wekanteam/markdown-it-mermaid": "^0.6.4",
     "katex": "^0.16.27",
     "markdown-it": "^14.1.0",
     "markdown-it-katex": "^2.0.3",
     "marked": "^17.0.1",
-    "puppeteer": "^24.33.0"
+    "puppeteer": "^24.33.0",
+    "remark-gfm": "^4.0.1",
+    "remark-html": "^16.0.1",
+    "remark-mermaid": "^0.2.0",
+    "remark-parse": "^11.0.0",
+    "unified": "^11.0.5"
   }
 }
