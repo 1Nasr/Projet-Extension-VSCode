@@ -3,7 +3,7 @@
   "displayName": "Markdown Visualizer",
   "version": "0.0.1",
   "engines": {
-    "vscode": "^1.108.1"
+    "vscode": "^1.100.33714"
   },
   "activationEvents": [
     "onView:visualizerView",
@@ -15,7 +15,7 @@
       "activitybar": [
         {
           "id": "visualizerContainer",
-          "title": "Visualizer",
+          "title": "Templates",
           "icon": "$(preview)"
         }
       ]
@@ -24,7 +24,7 @@
       "visualizerContainer": [
         {
           "id": "visualizerView",
-          "name": "Visualizer"
+          "name": "Templates"
         }
       ]
     },

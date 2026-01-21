@@ -1,6 +1,6 @@
 const vscode = require('vscode');
 const { Marp } = require('@marp-team/marp-core');
- 
+
 function activate(context) {
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -11,7 +11,7 @@ function activate(context) {
 }
 
 function deactivate() {}
- 
+
 function openPreview(context) {
   const editor = vscode.window.activeTextEditor;
 
@@ -41,13 +41,12 @@ function openPreview(context) {
   });
 
   panel.onDidDispose(() => changeListener.dispose());
-} 
+}
 
 function renderWithMarp(markdown, nonce) {
   const marp = new Marp({
     html: true,
-    math: 'katex',
-    mermaid: true
+    math: 'katex'
   });
 
   const { html, css } = marp.render(markdown);
@@ -58,32 +57,72 @@ function renderWithMarp(markdown, nonce) {
 <head>
 <meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'none'; style-src 'unsafe-inline' https://cdn.jsdelivr.net; script-src 'nonce-${nonce}' https://cdn.jsdelivr.net; font-src https://cdn.jsdelivr.net; img-src https://cdn.jsdelivr.net data:;">
+      content="
+        default-src 'none';
+        style-src 'unsafe-inline' https://cdn.jsdelivr.net;
+        script-src 'nonce-${nonce}' https://cdn.jsdelivr.net;
+        font-src https://cdn.jsdelivr.net;
+        img-src https://cdn.jsdelivr.net data:;
+      ">
 <style>
 ${css}
-body { background: #1e1e1e; color: #ddd; padding: 1.5rem; font-family: system-ui, sans-serif; }
+body {
+  background:rgb(0, 0, 0);
+  color: #ddd;
+  padding: 1.5rem;
+  font-family: system-ui, sans-serif;
+}
+pre {
+  background: #111;
+  padding: 2rem;
+  border-radius: 6px;
+  overflow-x: auto;
+}
 </style>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+
+<link rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 </head>
+
 <body>
 ${html}
 
-<script nonce="${nonce}" src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-<script nonce="${nonce}" src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
-<script nonce="${nonce}" src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script nonce="${nonce}"
+        src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script nonce="${nonce}"
+        src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+<script nonce="${nonce}"
+        src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+
 <script nonce="${nonce}">
+/* -------------------- KaTeX -------------------- */
 renderMathInElement(document.body, {
   delimiters: [
     { left: '$$', right: '$$', display: true },
     { left: '$', right: '$', display: false }
   ]
 });
+
+/* ------------------- Mermaid ------------------ */
+mermaid.initialize({
+  startOnLoad: true 
+});
  
+document.querySelectorAll('pre > code.language-mermaid').forEach(block => {
+  const container = document.createElement('div');
+  container.className = 'mermaid';
+  container.textContent = block.textContent;
+  block.parentElement.replaceWith(container);
+});
+
+/* Lance le rendu Mermaid */
+mermaid.run();
 </script>
 </body>
 </html>`;
 }
- 
+
 function getNonce() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let nonce = '';

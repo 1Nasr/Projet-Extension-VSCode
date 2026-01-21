@@ -3,6 +3,10 @@ marp: true
 theme: default
 paginate: true
 math: katex
+config:
+  layout: dagre
+  look: classic
+  theme: dark
 ---
 
 # Démo complète
@@ -18,7 +22,14 @@ Présentation générée avec **Marp**
 $E = mc^2$  
 $E = mc^3$  
 $E = mc^4$
-
+```mermaid
+flowchart TD
+    A[Christmas] -->|Get money| B(Go shopping)
+    B --> C{Let me think}
+    C -->|One| D[Laptop]
+    C -->|Two| E[iPhone]
+    C -->|Three| F[fa:fa-car Car]
+```
 ---
 
 ### Bloc
@@ -32,12 +43,12 @@ $$
 <style> 
   pre.mermaid {
     display: flex; 
-    width: 200%;
+    width: 100%;
   }
    
   pre.mermaid svg {
     height: 800px;  
-    max-width: 200%;
+    max-width: 100%;
   }
    
   :root {
@@ -46,19 +57,23 @@ $$
 </style> 
 ayuzfgazyufyugyuoaifzjnioazfjnio
 <pre class="mermaid" style="font-size: 24px;">
-gitGraph:
-    commit "Ashish"
-    branch newbranch
-    checkout newbranch
-    commit id:"1111"
-    commit tag:"d"
-    checkout main
-    commit type: HIGHLIGHT
-    commit
-    merge newbranch
-    commit
-    branch b2
-    commit
+mindmap
+  root((mindmap))
+    Origins
+      Long history
+      ::icon(fa fa-book)
+      Popularisation
+        British popular psychology author Tony Buzan
+    Research
+      On effectiveness<br/>and features
+      On Automatic creation
+        Uses
+            Creative techniques
+            Strategic planning
+            Argument mapping
+    Tools
+      Pen and paper
+      Mermaid
 </pre> 
 
 <script type="module">
