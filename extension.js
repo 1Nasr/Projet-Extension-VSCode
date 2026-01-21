@@ -1,6 +1,7 @@
 const vscode = require('vscode');
 const { Marp } = require('@marp-team/marp-core');
 
+
 function activate(context) {
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -11,6 +12,7 @@ function activate(context) {
 }
 
 function deactivate() {}
+
 
 function openPreview(context) {
   const editor = vscode.window.activeTextEditor;
@@ -41,6 +43,7 @@ function openPreview(context) {
   });
 
   panel.onDidDispose(() => changeListener.dispose());
+}
 }
 
 function renderWithMarp(markdown, nonce) {
@@ -94,6 +97,7 @@ body {
 href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 </head>
 
+
 <body>
 ${html}
 
@@ -131,8 +135,7 @@ async function renderMermaids() {
 }
 
 renderMermaids();
-
-// Rendu KaTeX
+ 
 renderMathInElement(document.body, {
   delimiters: [
     { left: "$$", right: "$$", display: true },
