@@ -30,8 +30,8 @@
     },
     "commands": [
       {
-        "command": "latex-visualizer.markdownPreview",
-        "title": "markdownPreview LaTeX and Preview PDF"
+        "command": "visualizer.markdownPreview",
+        "title": "markdown Preview"
       }
     ]
   },
@@ -55,6 +55,7 @@
     "markdown-it": "^14.1.0",
     "markdown-it-katex": "^2.0.3",
     "marked": "^17.0.1",
+    "mermaid": "^11.12.2",
     "puppeteer": "^24.33.0",
     "remark-gfm": "^4.0.1",
     "remark-html": "^16.0.1",
