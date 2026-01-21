@@ -43,8 +43,7 @@ function openPreview(context) {
   });
 
   panel.onDidDispose(() => changeListener.dispose());
-}
-}
+} 
 
 function renderWithMarp(markdown, nonce) {
   const marp = new Marp({
