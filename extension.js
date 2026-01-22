@@ -1,7 +1,6 @@
 const vscode = require('vscode');
 const { Marp } = require('@marp-team/marp-core');
 
-
 function activate(context) {
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -12,7 +11,6 @@ function activate(context) {
 }
 
 function deactivate() {}
-
 
 function openPreview(context) {
   const editor = vscode.window.activeTextEditor;
@@ -26,7 +24,9 @@ function openPreview(context) {
     'mdMarpMermaidPreview',
     'Marp + Mermaid Preview',
     vscode.ViewColumn.Two,
-    { enableScripts: true }
+    {
+      enableScripts: true
+    }
   );
 
   const nonce = getNonce();
@@ -42,8 +42,24 @@ function openPreview(context) {
     if (e.document === editor.document) update();
   });
 
-  panel.onDidDispose(() => changeListener.dispose());
-} 
+  const scrollListener =
+    vscode.window.onDidChangeTextEditorVisibleRanges(e => {
+      if (e.textEditor !== editor) return;
+
+      const totalLines = editor.document.lineCount;
+      const firstVisibleLine = e.visibleRanges[0].start.line;
+
+      panel.webview.postMessage({
+        type: 'scroll',
+        ratio: firstVisibleLine / totalLines
+      });
+    });
+
+  panel.onDidDispose(() => {
+    changeListener.dispose();
+    scrollListener.dispose();
+  });
+}
 
 function renderWithMarp(markdown, nonce) {
   const marp = new Marp({
@@ -70,7 +86,7 @@ img-src https://cdn.jsdelivr.net data:;
 
 <style>
 ${css}
- 
+
 section {
   overflow: visible;
 }
@@ -96,7 +112,6 @@ body {
 href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 </head>
 
-
 <body>
 ${html}
 
@@ -109,12 +124,14 @@ src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js">
 <script nonce="${nonce}" type="module">
 import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
 
+const vscode = acquireVsCodeApi();
+
 mermaid.initialize({
-  startOnLoad: false,  
-  theme: "default" 
+  startOnLoad: false,
+  theme: "default"
 });
 
-// on passe parun svg car html directement marp rogne tout 
+// on passe par un svg car html directement marp rogne tout
 async function renderMermaids() {
   const codes = document.querySelectorAll('pre > code.language-mermaid');
   for (const code of codes) {
@@ -124,7 +141,7 @@ async function renderMermaids() {
       const result = await mermaid.render(renderId, code.textContent);
       const div = document.createElement('div');
       div.className = 'mermaid';
-      div.innerHTML = result.svg;  
+      div.innerHTML = result.svg;
       pre.replaceWith(div);
     } catch (err) {
       console.error('Erreur Mermaid:', err);
@@ -134,19 +151,34 @@ async function renderMermaids() {
 }
 
 renderMermaids();
- 
+
 renderMathInElement(document.body, {
   delimiters: [
     { left: "$$", right: "$$", display: true },
     { left: "$", right: "$", display: false }
   ]
+}); 
+ 
+
+window.addEventListener('message', event => {
+  const { type, ratio } = event.data;
+
+  if (type === 'scroll') {
+    const scrollHeight =
+      document.documentElement.scrollHeight -
+      document.documentElement.clientHeight;
+
+    window.scrollTo({
+      top: scrollHeight * ratio,
+      behavior: 'auto'
+    });
+  }
 });
 </script>
 
 </body>
 </html>`;
 }
-
 
 function getNonce() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';

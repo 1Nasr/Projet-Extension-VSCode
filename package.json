@@ -7,7 +7,7 @@
   },
   "activationEvents": [
     "onView:visualizerView",
-    "onCommand:markdown-visualizer.markdownPreview"
+    "onCommand:visualizer.markdownPreview"
   ],
   "main": "./extension.js",
   "contributes": {
