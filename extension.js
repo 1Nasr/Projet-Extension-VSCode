@@ -3,10 +3,8 @@ const { Marp } = require('@marp-team/marp-core');
 
 function activate(context) {
   context.subscriptions.push(
-    vscode.commands.registerCommand(
-      'visualizer.markdownPreview',
-      () => openPreview(context)
-    )
+    vscode.commands.registerCommand('visualizer.markdownPreview',
+      () => openPreview(context))
   );
 }
 
@@ -14,9 +12,8 @@ function deactivate() {}
 
 function openPreview(context) {
   const editor = vscode.window.activeTextEditor;
-
   if (!editor || editor.document.languageId !== 'markdown') {
-    vscode.window.showErrorMessage('Ouvrez d’abord un fichier Markdown (.md)');
+    vscode.window.showErrorMessage('Ouvrez un fichier Markdown (.md)');
     return;
   }
 
@@ -42,18 +39,54 @@ function openPreview(context) {
     if (e.document === editor.document) update();
   });
 
-  const scrollListener =
-    vscode.window.onDidChangeTextEditorVisibleRanges(e => {
-      if (e.textEditor !== editor) return;
+  const scrollListener = vscode.window.onDidChangeTextEditorVisibleRanges(e => {
+  if (e.textEditor !== editor) return;
 
-      const totalLines = editor.document.lineCount;
-      const firstVisibleLine = e.visibleRanges[0].start.line;
+  const document = editor.document;
+  
+  const LOOK_AHEAD = 15; 
+  const firstVisibleLine = e.visibleRanges[0].start.line;
+  const targetLine = Math.min(firstVisibleLine + LOOK_AHEAD, document.lineCount - 1);
+  if (firstVisibleLine === 0) {
+      panel.webview.postMessage({ type: 'scroll', ratio: 0 });
+      return;
+    }
+  const NORMAL_WEIGHT = 20;
+  const SLIDE_BOOST = 800; 
+  let weightedCurrent = 0;
+  let weightedTotal = 0;
+  let separatorCount = 0;
+  let inCodeBlock = false;
 
-      panel.webview.postMessage({
-        type: 'scroll',
-        ratio: firstVisibleLine / totalLines
-      });
-    });
+  for (let i = 0; i < document.lineCount; i++) {
+    const lineText = document.lineAt(i).text.trim();
+
+    //poids de scroll de chaque ligne "normale"
+    let weight = NORMAL_WEIGHT;
+    //evite que l'entete fasse n'importe quoi avec les ---
+    if (lineText.startsWith('```')) {
+      inCodeBlock = !inCodeBlock;
+    }
+    if (!inCodeBlock && lineText === '---') {
+      separatorCount++;
+      if (separatorCount > 2) {
+        weight = SLIDE_BOOST;
+      }
+    }
+
+    weightedTotal += weight;
+    if (i <= targetLine) {
+      weightedCurrent += weight;
+    }
+  }
+
+  const smartRatio = weightedCurrent / weightedTotal;
+
+  panel.webview.postMessage({
+    type: 'scroll',
+    ratio: smartRatio
+  });
+});
 
   panel.onDidDispose(() => {
     changeListener.dispose();
@@ -105,6 +138,9 @@ body {
   color: #ddd;
   padding: 1.5rem;
   font-family: system-ui, sans-serif;
+}
+html {
+  scroll-behavior: smooth;
 }
 </style>
 
@@ -164,13 +200,13 @@ window.addEventListener('message', event => {
   const { type, ratio } = event.data;
 
   if (type === 'scroll') {
-    const scrollHeight =
-      document.documentElement.scrollHeight -
-      document.documentElement.clientHeight;
-
+    const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+    
+    // On retire le 'smooth' ici car le CSS (scroll-behavior) s'en occupe déjà 
+    // de façon plus optimisée. Si tu préfères le contrôler en JS, garde 'smooth'.
     window.scrollTo({
       top: scrollHeight * ratio,
-      behavior: 'auto'
+      behavior: 'auto' 
     });
   }
 });
