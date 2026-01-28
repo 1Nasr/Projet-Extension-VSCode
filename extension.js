@@ -196,72 +196,53 @@ function getNonce() {
   }
   return nonce;
 }
-
+// template d'arbre pour parser templates.json vers l'arborescence de la vue 
 class TemplateProvider {
   constructor() {
     this._onDidChangeTreeData = new vscode.EventEmitter();
     this.onDidChangeTreeData = this._onDidChangeTreeData.event;
-    this.templates = this.loadTemplates();
-    this.tree = this.buildTree();
+    this.templates = this._loadTemplates();
   }
 
-  loadTemplates() {
-    const folders = vscode.workspace.workspaceFolders;
-    if (!folders || folders.length === 0) {
-      vscode.window.showWarningMessage('Aucun dossier workspace trouvé pour charger templates.json');
-      return {};
-    }
-    const filePath = path.join(folders[0].uri.fsPath, 'templates.json');
+  _loadTemplates() {
     try {
+      const folders = vscode.workspace.workspaceFolders;
+      if (!folders || folders.length === 0) return {};
+      const filePath = path.join(folders[0].uri.fsPath, 'templates.json');
       const raw = fs.readFileSync(filePath, 'utf8');
       return JSON.parse(raw);
-    } catch (err) {
-      vscode.window.showErrorMessage('Impossible de lire templates.json: ' + err.message);
+    } catch (e) {
       return {};
     }
-  }
-
-  buildTree() {
-    const tree = [];
-    for (const category of Object.keys(this.templates)) {
-      const items = [];
-      const content = this.templates[category] || {};
-      for (const key of Object.keys(content)) {
-        items.push({ type: 'item', label: key, content: content[key] });
-      }
-      tree.push({ type: 'category', label: category, children: items });
-    }
-    return tree;
   }
 
   getChildren(element) {
     if (!element) {
-      return this.tree;
+      return Object.keys(this.templates || {}).map(cat => ({ type: 'category', label: cat }));
     }
-    return element.children || [];
+    if (element.type === 'category') {
+      const items = this.templates[element.label] || {};
+      return Object.keys(items).map(k => ({ type: 'template', label: k, content: items[k] }));
+    }
+    return [];
   }
 
   getTreeItem(element) {
     if (element.type === 'category') {
-      const ti = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.Collapsed);
-      ti.contextValue = 'category';
-      return ti;
+      return new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.Collapsed);
     }
-
     const ti = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.None);
     ti.tooltip = element.content;
     ti.command = {
       command: 'visualizer.copyTemplate',
-      title: 'Copier le template',
+      title: 'Copier',
       arguments: [element.label, element.content]
     };
-    ti.contextValue = 'templateItem';
     return ti;
   }
 
   refresh() {
-    this.templates = this.loadTemplates();
-    this.tree = this.buildTree();
+    this.templates = this._loadTemplates();
     this._onDidChangeTreeData.fire();
   }
 }
