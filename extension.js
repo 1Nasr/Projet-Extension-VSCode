@@ -1,4 +1,6 @@
 const vscode = require('vscode');
+const fs = require('fs');
+const path = require('path');
 const { Marp } = require('@marp-team/marp-core');
 const { setupScrollSync } = require('./scroll');
 
@@ -6,6 +8,22 @@ function activate(context) {
   context.subscriptions.push(
     vscode.commands.registerCommand('visualizer.markdownPreview',
       () => openPreview(context))
+  );
+
+  const provider = new TemplateProvider();
+  context.subscriptions.push(
+    vscode.window.registerTreeDataProvider('visualizerView', provider)
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('visualizer.copyTemplate', (label, content) => {
+      if (!content) return;
+      vscode.env.clipboard.writeText(content).then(() => {
+        vscode.window.showInformationMessage(`Copié: ${label}`);
+      }, err => {
+        vscode.window.showErrorMessage('Impossible de copier dans le presse-papiers: ' + err.message);
+      });
+    })
   );
 }
 
@@ -177,6 +195,75 @@ function getNonce() {
     nonce += chars[Math.floor(Math.random() * chars.length)];
   }
   return nonce;
+}
+
+class TemplateProvider {
+  constructor() {
+    this._onDidChangeTreeData = new vscode.EventEmitter();
+    this.onDidChangeTreeData = this._onDidChangeTreeData.event;
+    this.templates = this.loadTemplates();
+    this.tree = this.buildTree();
+  }
+
+  loadTemplates() {
+    const folders = vscode.workspace.workspaceFolders;
+    if (!folders || folders.length === 0) {
+      vscode.window.showWarningMessage('Aucun dossier workspace trouvé pour charger templates.json');
+      return {};
+    }
+    const filePath = path.join(folders[0].uri.fsPath, 'templates.json');
+    try {
+      const raw = fs.readFileSync(filePath, 'utf8');
+      return JSON.parse(raw);
+    } catch (err) {
+      vscode.window.showErrorMessage('Impossible de lire templates.json: ' + err.message);
+      return {};
+    }
+  }
+
+  buildTree() {
+    const tree = [];
+    for (const category of Object.keys(this.templates)) {
+      const items = [];
+      const content = this.templates[category] || {};
+      for (const key of Object.keys(content)) {
+        items.push({ type: 'item', label: key, content: content[key] });
+      }
+      tree.push({ type: 'category', label: category, children: items });
+    }
+    return tree;
+  }
+
+  getChildren(element) {
+    if (!element) {
+      return this.tree;
+    }
+    return element.children || [];
+  }
+
+  getTreeItem(element) {
+    if (element.type === 'category') {
+      const ti = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.Collapsed);
+      ti.contextValue = 'category';
+      return ti;
+    }
+
+    const ti = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.None);
+    ti.tooltip = element.content;
+    ti.command = {
+      command: 'visualizer.copyTemplate',
+      title: 'Copier le template',
+      arguments: [element.label, element.content]
+    };
+    ti.contextValue = 'templateItem';
+    return ti;
+  }
+
+  refresh() {
+    this.templates = this.loadTemplates();
+    this.tree = this.buildTree();
+    this._onDidChangeTreeData.fire();
+  }
 }
 
 module.exports = { activate, deactivate };

@@ -3,11 +3,12 @@
   "displayName": "Markdown Visualizer",
   "version": "0.0.1",
   "engines": {
-    "vscode": "^1.100.33714"
+    "vscode": "^1.108.0"
   },
   "activationEvents": [
     "onView:visualizerView",
-    "onCommand:visualizer.markdownPreview"
+    "onCommand:visualizer.markdownPreview",
+    "onCommand:visualizer.copyTemplate"
   ],
   "main": "./extension.js",
   "contributes": {
@@ -32,6 +33,10 @@
       {
         "command": "visualizer.markdownPreview",
         "title": "markdown Preview"
+      },
+      {
+        "command": "visualizer.copyTemplate",
+        "title": "Copier le template"
       }
     ]
   },
