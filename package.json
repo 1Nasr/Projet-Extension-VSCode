@@ -3,11 +3,12 @@
   "displayName": "Markdown Visualizer",
   "version": "0.0.1",
   "engines": {
-    "vscode": "^1.100.33714"
+    "vscode": "^1.97.0"
   },
   "activationEvents": [
     "onView:visualizerView",
-    "onCommand:visualizer.markdownPreview"
+    "onCommand:visualizer.markdownPreview",
+    "onCommand:visualizer.exportPdf"
   ],
   "main": "./extension.js",
   "contributes": {
@@ -32,8 +33,22 @@
       {
         "command": "visualizer.markdownPreview",
         "title": "markdown Preview"
+      },
+      {
+        "command": "visualizer.exportPdf",
+        "title": "Export Markdown to PDF"
       }
-    ]
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "visualizer.markdownPreview", 
+          "when": "resourceLangId == markdown",
+          "group": "navigation@90",
+          "icon": "$(preview)"
+        }
+      ]
+    }
   },
   "scripts": {
     "lint": "eslint .",
