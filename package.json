@@ -3,7 +3,7 @@
   "displayName": "Markdown Visualizer",
   "version": "0.0.1",
   "engines": {
-    "vscode": "^1.100.33714"
+    "vscode": "^1.108.1"
   },
   "activationEvents": [
     "onView:visualizerView",
@@ -46,9 +46,11 @@
     "@types/vscode": "^1.107.0",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
-    "eslint": "^9.39.1"
+    "eslint": "^9.39.1",
+    "playwright": "^1.58.1"
   },
   "dependencies": {
+    "@marp-team/marp-cli": "^4.2.3",
     "@marp-team/marp-core": "^4.2.0",
     "@wekanteam/markdown-it-mermaid": "^0.6.4",
     "katex": "^0.16.27",

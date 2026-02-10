@@ -1,6 +1,9 @@
 const vscode = require('vscode');
 const { Marp } = require('@marp-team/marp-core');
 const { setupScrollSync } = require('./scroll');
+const { chromium } = require('playwright');
+const fs = require('fs');
+const path = require('path');
 
 function activate(context) {
   context.subscriptions.push(
@@ -41,13 +44,50 @@ function openPreview(context) {
   });
 
   const scrollListener = setupScrollSync(editor, panel);
-
+  panel.webview.onDidReceiveMessage(async message => {
+    if (message.type === 'export-pdf') {
+      await exportPdf(editor.document.getText(), context);
+    }
+  });
   panel.onDidDispose(() => {
     changeListener.dispose();
     scrollListener.dispose();
   });
 }
 
+async function exportPdf(markdown, context) {
+  const uri = await vscode.window.showSaveDialog({
+    filters: { PDF: ['pdf'] },
+    defaultUri: vscode.Uri.file('export.pdf')
+  });
+  if (!uri) return;
+
+  const nonce = getNonce();
+  const html = renderWithMarp(markdown, nonce);
+
+  const tmpHtml = path.join(context.extensionPath, '__export.html');
+  fs.writeFileSync(tmpHtml, html, 'utf8');
+
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+
+  await page.goto(`file://${tmpHtml}`, {
+    waitUntil: 'networkidle'
+  });
+ 
+  await page.waitForTimeout(500);
+
+  await page.pdf({
+    path: uri.fsPath,
+    format: 'A4',
+    printBackground: true
+  });
+
+  await browser.close();
+  fs.unlinkSync(tmpHtml);
+
+  vscode.window.showInformationMessage('PDF exporté 🎉');
+}
 function renderWithMarp(markdown, nonce) {
   const marp = new Marp({
     html: true,
@@ -96,6 +136,30 @@ body {
 html {
   scroll-behavior: smooth;
 }
+ 
+#exportPdf {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 1000;
+  padding: 8px 16px;
+  background: #0e639c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.2s;
+}
+
+#exportPdf:hover {
+  background: #1177bb;
+}
+
+@media print {
+  #exportPdf { display: none; }
+  body { background: white; color: black; }
+}
 </style>
 
 <link rel="stylesheet"
@@ -103,6 +167,8 @@ href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 </head>
 
 <body>
+<button id="exportPdf">Exporter PDF</button>
+
 ${html}
 
 <script nonce="${nonce}"
@@ -110,60 +176,61 @@ src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 
 <script nonce="${nonce}"
 src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
 
-<script nonce="${nonce}" type="module">
-import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+<script nonce="${nonce}" type="module"> 
+  let vscode = null;
+  
+  try { 
+    if (typeof acquireVsCodeApi === 'function') {
+        vscode = acquireVsCodeApi();
+    }
+  } catch (e) {
+    console.log('Mode export ou hors VS Code');
+  }
+ 
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: "default"
+  });
 
-const vscode = acquireVsCodeApi();
-
-mermaid.initialize({
-  startOnLoad: false,
-  theme: "default"
-});
-
-// on passe par un svg car html directement marp rogne tout
-async function renderMermaids() {
-  const codes = document.querySelectorAll('pre > code.language-mermaid');
-  for (const code of codes) {
-    const pre = code.parentElement;
-    try {
-      const renderId = 'mermaid-svg-' + Math.random().toString(36).substr(2, 9);
-      const result = await mermaid.render(renderId, code.textContent);
-      const div = document.createElement('div');
-      div.className = 'mermaid';
-      div.innerHTML = result.svg;
-      pre.replaceWith(div);
-    } catch (err) {
-      console.error('Erreur Mermaid:', err);
-      pre.textContent = 'Erreur de rendu Mermaid';
+  async function renderMermaids() {
+    const codes = document.querySelectorAll('pre > code.language-mermaid');
+    for (const code of codes) {
+      const pre = code.parentElement;
+      try {
+        const renderId = 'mermaid-svg-' + Math.random().toString(36).substr(2, 9);
+        const result = await mermaid.render(renderId, code.textContent);
+        const div = document.createElement('div');
+        div.className = 'mermaid';
+        div.innerHTML = result.svg;
+        pre.replaceWith(div);
+      } catch (err) {
+        console.error('Erreur Mermaid:', err);
+        pre.textContent = 'Erreur de rendu Mermaid';
+      }
     }
   }
-}
-
-renderMermaids();
-
-renderMathInElement(document.body, {
-  delimiters: [
-    { left: "$$", right: "$$", display: true },
-    { left: "$", right: "$", display: false }
-  ]
-}); 
  
-
-window.addEventListener('message', event => {
-  const { type, ratio } = event.data;
-
-  if (type === 'scroll') {
-    const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-    
-    // On retire le 'smooth' ici car le CSS (scroll-behavior) s'en occupe déjà 
-    // de façon plus optimisée. Si tu préfères le contrôler en JS, garde 'smooth'.
-    window.scrollTo({
-      top: scrollHeight * ratio,
-      behavior: 'auto' 
-    });
+  renderMermaids();
+ 
+  renderMathInElement(document.body, {
+    delimiters: [
+      { left: "$$", right: "$$", display: true },
+      { left: "$", right: "$", display: false }
+    ]
+  }); 
+ 
+  const btn = document.getElementById('exportPdf');
+  if (btn) { 
+    if (!vscode) {
+        // btn.style.display = 'none'; 
+    } else {
+        btn.addEventListener('click', () => {
+            vscode.postMessage({ type: 'export-pdf' });
+        });
+    }
   }
-});
 </script>
 
 </body>
