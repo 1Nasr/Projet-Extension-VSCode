@@ -29,6 +29,119 @@ function activate(context) {
 
 function deactivate() {}
 
+// ---------------------------------------------------------------------------
+// Parser de blocs :::
+//
+// Syntaxe unique (multiligne seulement) :
+//
+//   ::: titre optionnel      ← ouvre un bloc
+//   contenu...
+//   ::: enfant               ← bloc imbriqué
+//   contenu enfant...
+//   :::                      ← ferme le bloc enfant
+//   :::                      ← ferme le bloc parent
+//
+// La règle est simple :
+//   - ::: suivi de texte  = ouverture
+//   - ::: seul            = fermeture
+// ---------------------------------------------------------------------------
+
+function processCustomBlocks(text) {
+  const lines = text.split('\n');
+  const output = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    // Fermeture seule — ne devrait pas arriver ici (consommé dans la récursion)
+    // mais on la laisse passer telle quelle si orpheline
+    if (trimmed === ':::') {
+      output.push(line);
+      i++;
+      continue;
+    }
+
+    // Ouverture : ::: ou ::: titre
+    const openMatch = trimmed.match(/^:::\s*(.*)$/);
+    if (openMatch) {
+      const title = openMatch[1].trim();
+      const innerLines = [];
+      i++;
+      let depth = 1;
+
+      while (i < lines.length) {
+        const inner = lines[i];
+        const innerTrimmed = inner.trim();
+
+        if (innerTrimmed === ':::') {
+          depth--;
+          if (depth === 0) { i++; break; }
+          innerLines.push(inner);
+        } else if (innerTrimmed.startsWith(':::')) {
+          depth++;
+          innerLines.push(inner);
+        } else {
+          innerLines.push(inner);
+        }
+        i++;
+      }
+
+      const innerProcessed = processCustomBlocks(innerLines.join('\n'));
+      output.push(renderBlockHTML(innerProcessed, title));
+      continue;
+    }
+
+    output.push(line);
+    i++;
+  }
+
+  return output.join('\n');
+}
+
+function renderBlockHTML(content, title) {
+  const titleHtml = title
+    ? `<div class="custom-block-title">${title}</div>`
+    : '';
+  return `<div class="custom-block">${titleHtml}<table><tr><td>${content}</td></tr></table></div>`;
+}
+
+const customBlockCSS = `
+.custom-block {
+  border: 2px solid #7c6af7;
+  border-radius: 8px;
+  padding: 0.5rem;
+  margin: 0.5rem 0;
+  background: rgba(124, 106, 247, 0.08);
+}
+.custom-block-title {
+  font-weight: bold;
+  color: #7c6af7;
+  margin-bottom: 0.4rem;
+  font-size: 0.9em;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.custom-block table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.custom-block td {
+  padding: 0.4rem;
+  vertical-align: top;
+}
+.custom-block .custom-block {
+  border-color: #f7a26a;
+  background: rgba(247, 162, 106, 0.08);
+}
+.custom-block .custom-block .custom-block-title {
+  color: #f7a26a;
+}
+`;
+
+// ---------------------------------------------------------------------------
+
 function openPreview(context) {
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.document.languageId !== 'markdown') {
@@ -40,9 +153,7 @@ function openPreview(context) {
     'mdMarpMermaidPreview',
     'Marp + Mermaid Preview',
     vscode.ViewColumn.Two,
-    {
-      enableScripts: true
-    }
+    { enableScripts: true }
   );
 
   const nonce = getNonce();
@@ -72,7 +183,8 @@ function renderWithMarp(markdown, nonce) {
     math: 'katex'
   });
 
-  const { html, css } = marp.render(markdown);
+  const preprocessed = processCustomBlocks(markdown);
+  const { html, css } = marp.render(preprocessed);
 
   return `
 <!DOCTYPE html>
@@ -92,19 +204,18 @@ img-src https://cdn.jsdelivr.net data:;
 <style>
 ${css}
 
+${customBlockCSS}
+
 section {
   overflow: visible;
 }
-
 .mermaid {
   width: 100%;
 }
-
 .mermaid svg {
   overflow: visible;
   max-width: 100%;
 }
-
 body {
   background: #1e1e1e;
   color: #ddd;
@@ -134,12 +245,8 @@ import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.mi
 
 const vscode = acquireVsCodeApi();
 
-mermaid.initialize({
-  startOnLoad: false,
-  theme: "default"
-});
+mermaid.initialize({ startOnLoad: false, theme: "default" });
 
-// on passe par un svg car html directement marp rogne tout
 async function renderMermaids() {
   const codes = document.querySelectorAll('pre > code.language-mermaid');
   for (const code of codes) {
@@ -165,21 +272,13 @@ renderMathInElement(document.body, {
     { left: "$$", right: "$$", display: true },
     { left: "$", right: "$", display: false }
   ]
-}); 
- 
+});
 
 window.addEventListener('message', event => {
   const { type, ratio } = event.data;
-
   if (type === 'scroll') {
     const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-    
-    // On retire le 'smooth' ici car le CSS (scroll-behavior) s'en occupe déjà 
-    // de façon plus optimisée. Si tu préfères le contrôler en JS, garde 'smooth'.
-    window.scrollTo({
-      top: scrollHeight * ratio,
-      behavior: 'auto' 
-    });
+    window.scrollTo({ top: scrollHeight * ratio, behavior: 'auto' });
   }
 });
 </script>
@@ -191,12 +290,10 @@ window.addEventListener('message', event => {
 function getNonce() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let nonce = '';
-  for (let i = 0; i < 32; i++) {
-    nonce += chars[Math.floor(Math.random() * chars.length)];
-  }
+  for (let i = 0; i < 32; i++) nonce += chars[Math.floor(Math.random() * chars.length)];
   return nonce;
 }
-// template d'arbre pour parser templates.json vers l'arborescence de la vue 
+
 class TemplateProvider {
   constructor() {
     this._onDidChangeTreeData = new vscode.EventEmitter();

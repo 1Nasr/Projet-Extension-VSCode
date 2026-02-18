@@ -3,7 +3,7 @@
   "displayName": "Markdown Visualizer",
   "version": "0.0.1",
   "engines": {
-    "vscode": "^1.108.0"
+    "vscode": "^1.100.33714"
   },
   "activationEvents": [
     "onView:visualizerView",

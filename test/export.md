@@ -33,7 +33,9 @@ gitGraph
     merge feature
  ```
  ---
- 
+ ::: bonjour 
+
+
 ```mermaid
 classDiagram
     Animal <|-- Duck
@@ -57,6 +59,9 @@ classDiagram
       +run()
     }
  ```
+
+ :::
+
 ---
 ```mermaid
 graph TD;
@@ -79,3 +84,12 @@ sequenceDiagram
     John->>Bob: How about you?
     Bob-->>John: Jolly good!
    ```
+
+   ---
+   ::: parent
+contenu du parent
+::: enfant
+contenu de l'enfant
+:::
+encore du parent
+:::
