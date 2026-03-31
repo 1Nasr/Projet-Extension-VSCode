@@ -4,7 +4,34 @@ const path = require('path');
 const { Marp } = require('@marp-team/marp-core');
 const { setupScrollSync } = require('./scroll');
 
+// Initialiser templates.json avec les templates par défaut
+function initializeTemplatesFile() {
+  try {
+    const templatesPath = path.join(__dirname, 'templates.json');
+    
+    // Si le fichier n'existe pas, le créer avec les templates par défaut
+    if (!fs.existsSync(templatesPath)) {
+      const defaultTemplates = {
+        "Mermaid": {
+          "Test Utilisateur": "flowchart TD\n    A[📱 Utilisateur] -->|Clique| B{Quelle action?}\n    B -->|Créer| C[✏️ Nouveau Template]\n    B -->|Éditer| D[🔧 Modifier]\n    B -->|Supprimer| E[🗑️ Effacer]\n    C --> F[✅ Sauvegardé]\n    D --> F\n    E --> F\n    F --> G[📄 templates.json mis à jour]",
+          "Classe": "classDiagram\n    Animal <|-- Duck\n    Animal <|-- Fish\n    Animal <|-- Zebra\n    Animal : +int age\n    Animal : +String gender\n    Animal: +isMammal()\n    Animal: +mate()\n    class Duck{\n      +String beakColor\n      +swim()\n      +quack()\n    }\n    class Fish{\n      -int sizeInFeet\n      -canEat()\n    }\n    class Zebra{\n      +bool is_wild\n      +run()\n    }",
+          "Diagramme de séquence": "sequenceDiagram\n    Alice->>+John: Hello John, how are you?\n    Alice->>+John: John, can you hear me?\n    John-->>-Alice: Hi Alice, I can hear you!\n    John-->>-Alice: I feel great!",
+          "Diagramme de flux": "flowchart LR\n    A[Start] --> B{Decision}\n    B -->|Yes| C[Do something]\n    B -->|No| D[Do something else]"
+        }
+      };
+      
+      fs.writeFileSync(templatesPath, JSON.stringify(defaultTemplates, null, 2), 'utf8');
+    }
+  } catch (e) {
+    console.error('Erreur lors de l\'initialisation de templates.json:', e);
+  }
+}
+
 function activate(context) {
+  // Initialiser templates.json au démarrage
+  initializeTemplatesFile();
+  // Initialiser templates.json au démarrage
+  initializeTemplatesFile();
   context.subscriptions.push(
     vscode.commands.registerCommand('visualizer.markdownPreview',
       () => openPreview(context))
@@ -14,7 +41,11 @@ function activate(context) {
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider('visualizerView', provider)
   );
+  provider.refresh();
+  provider.refresh();
 
+  // Commande: copier template
+  // Commande: copier template
   context.subscriptions.push(
     vscode.commands.registerCommand('visualizer.copyTemplate', (label, content) => {
       if (!content) return;
@@ -25,122 +56,115 @@ function activate(context) {
       });
     })
   );
+
+  // Commande: créer un nouveau template
+  context.subscriptions.push(
+    vscode.commands.registerCommand('visualizer.createTemplate', () => {
+      createNewTemplate(provider);
+    })
+  );
+
+  // Commande: éditer un template existant
+  context.subscriptions.push(
+    vscode.commands.registerCommand('visualizer.editTemplate', (item) => {
+      if (item && item.type === 'template') {
+        editTemplate(provider, item.categoryLabel, item.label);
+      }
+    })
+  );
+
+  // Commande: supprimer un template
+  context.subscriptions.push(
+    vscode.commands.registerCommand('visualizer.deleteTemplate', (item) => {
+      if (item && item.type === 'template') {
+        deleteTemplate(provider, item.categoryLabel, item.label);
+      }
+    })
+  );
+
+  // Commande: ajouter une catégorie
+  context.subscriptions.push(
+    vscode.commands.registerCommand('visualizer.addCategory', () => {
+      addNewCategory(provider);
+    })
+  );
+
+  // Commande: supprimer une catégorie
+  context.subscriptions.push(
+    vscode.commands.registerCommand('visualizer.deleteCategory', (item) => {
+      if (item && item.type === 'category') {
+        deleteCategory(provider, item.label);
+      }
+    })
+  );
+
+  // File watcher pour rafraîchir automatiquement
+  const templateWatcher = vscode.workspace.createFileSystemWatcher('**/templates.json');
+  templateWatcher.onDidChange(() => {
+    setTimeout(() => provider.refresh(), 500);
+  });
+  templateWatcher.onDidCreate(() => provider.refresh());
+  templateWatcher.onDidDelete(() => {
+    initializeTemplatesFile();
+    provider.refresh();
+  });
+  context.subscriptions.push(templateWatcher);
+
+  // Commande: créer un nouveau template
+  context.subscriptions.push(
+    vscode.commands.registerCommand('visualizer.createTemplate', () => {
+      createNewTemplate(provider);
+    })
+  );
+
+  // Commande: éditer un template existant
+  context.subscriptions.push(
+    vscode.commands.registerCommand('visualizer.editTemplate', (item) => {
+      if (item && item.type === 'template') {
+        editTemplate(provider, item.categoryLabel, item.label);
+      }
+    })
+  );
+
+  // Commande: supprimer un template
+  context.subscriptions.push(
+    vscode.commands.registerCommand('visualizer.deleteTemplate', (item) => {
+      if (item && item.type === 'template') {
+        deleteTemplate(provider, item.categoryLabel, item.label);
+      }
+    })
+  );
+
+  // Commande: ajouter une catégorie
+  context.subscriptions.push(
+    vscode.commands.registerCommand('visualizer.addCategory', () => {
+      addNewCategory(provider);
+    })
+  );
+
+  // Commande: supprimer une catégorie
+  context.subscriptions.push(
+    vscode.commands.registerCommand('visualizer.deleteCategory', (item) => {
+      if (item && item.type === 'category') {
+        deleteCategory(provider, item.label);
+      }
+    })
+  );
+
+  // File watcher pour rafraîchir automatiquement
+  const templateWatcher = vscode.workspace.createFileSystemWatcher('**/templates.json');
+  templateWatcher.onDidChange(() => {
+    setTimeout(() => provider.refresh(), 500);
+  });
+  templateWatcher.onDidCreate(() => provider.refresh());
+  templateWatcher.onDidDelete(() => {
+    initializeTemplatesFile();
+    provider.refresh();
+  });
+  context.subscriptions.push(templateWatcher);
 }
 
 function deactivate() {}
-
-// ---------------------------------------------------------------------------
-// Parser de blocs :::
-//
-// Syntaxe unique (multiligne seulement) :
-//
-//   ::: titre optionnel      ← ouvre un bloc
-//   contenu...
-//   ::: enfant               ← bloc imbriqué
-//   contenu enfant...
-//   :::                      ← ferme le bloc enfant
-//   :::                      ← ferme le bloc parent
-//
-// La règle est simple :
-//   - ::: suivi de texte  = ouverture
-//   - ::: seul            = fermeture
-// ---------------------------------------------------------------------------
-
-function processCustomBlocks(text) {
-  const lines = text.split('\n');
-  const output = [];
-  let i = 0;
-
-  while (i < lines.length) {
-    const line = lines[i];
-    const trimmed = line.trim();
-
-    // Fermeture seule — ne devrait pas arriver ici (consommé dans la récursion)
-    // mais on la laisse passer telle quelle si orpheline
-    if (trimmed === ':::') {
-      output.push(line);
-      i++;
-      continue;
-    }
-
-    // Ouverture : ::: ou ::: titre
-    const openMatch = trimmed.match(/^:::\s*(.*)$/);
-    if (openMatch) {
-      const title = openMatch[1].trim();
-      const innerLines = [];
-      i++;
-      let depth = 1;
-
-      while (i < lines.length) {
-        const inner = lines[i];
-        const innerTrimmed = inner.trim();
-
-        if (innerTrimmed === ':::') {
-          depth--;
-          if (depth === 0) { i++; break; }
-          innerLines.push(inner);
-        } else if (innerTrimmed.startsWith(':::')) {
-          depth++;
-          innerLines.push(inner);
-        } else {
-          innerLines.push(inner);
-        }
-        i++;
-      }
-
-      const innerProcessed = processCustomBlocks(innerLines.join('\n'));
-      output.push(renderBlockHTML(innerProcessed, title));
-      continue;
-    }
-
-    output.push(line);
-    i++;
-  }
-
-  return output.join('\n');
-}
-
-function renderBlockHTML(content, title) {
-  const titleHtml = title
-    ? `<div class="custom-block-title">${title}</div>`
-    : '';
-  return `<div class="custom-block">${titleHtml}<table><tr><td>${content}</td></tr></table></div>`;
-}
-
-const customBlockCSS = `
-.custom-block {
-  border: 2px solid #7c6af7;
-  border-radius: 8px;
-  padding: 0.5rem;
-  margin: 0.5rem 0;
-  background: rgba(124, 106, 247, 0.08);
-}
-.custom-block-title {
-  font-weight: bold;
-  color: #7c6af7;
-  margin-bottom: 0.4rem;
-  font-size: 0.9em;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-.custom-block table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.custom-block td {
-  padding: 0.4rem;
-  vertical-align: top;
-}
-.custom-block .custom-block {
-  border-color: #f7a26a;
-  background: rgba(247, 162, 106, 0.08);
-}
-.custom-block .custom-block .custom-block-title {
-  color: #f7a26a;
-}
-`;
-
-// ---------------------------------------------------------------------------
 
 function openPreview(context) {
   const editor = vscode.window.activeTextEditor;
@@ -153,7 +177,9 @@ function openPreview(context) {
     'mdMarpMermaidPreview',
     'Marp + Mermaid Preview',
     vscode.ViewColumn.Two,
-    { enableScripts: true }
+    {
+      enableScripts: true
+    }
   );
 
   const nonce = getNonce();
@@ -183,8 +209,7 @@ function renderWithMarp(markdown, nonce) {
     math: 'katex'
   });
 
-  const preprocessed = processCustomBlocks(markdown);
-  const { html, css } = marp.render(preprocessed);
+  const { html, css } = marp.render(markdown);
 
   return `
 <!DOCTYPE html>
@@ -204,18 +229,19 @@ img-src https://cdn.jsdelivr.net data:;
 <style>
 ${css}
 
-${customBlockCSS}
-
 section {
   overflow: visible;
 }
+
 .mermaid {
   width: 100%;
 }
+
 .mermaid svg {
   overflow: visible;
   max-width: 100%;
 }
+
 body {
   background: #1e1e1e;
   color: #ddd;
@@ -245,8 +271,12 @@ import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.mi
 
 const vscode = acquireVsCodeApi();
 
-mermaid.initialize({ startOnLoad: false, theme: "default" });
+mermaid.initialize({
+  startOnLoad: false,
+  theme: "default"
+});
 
+// on passe par un svg car html directement marp rogne tout
 async function renderMermaids() {
   const codes = document.querySelectorAll('pre > code.language-mermaid');
   for (const code of codes) {
@@ -272,13 +302,21 @@ renderMathInElement(document.body, {
     { left: "$$", right: "$$", display: true },
     { left: "$", right: "$", display: false }
   ]
-});
+}); 
+ 
 
 window.addEventListener('message', event => {
   const { type, ratio } = event.data;
+
   if (type === 'scroll') {
     const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-    window.scrollTo({ top: scrollHeight * ratio, behavior: 'auto' });
+    
+    // On retire le 'smooth' ici car le CSS (scroll-behavior) s'en occupe déjà 
+    // de façon plus optimisée. Si tu préfères le contrôler en JS, garde 'smooth'.
+    window.scrollTo({
+      top: scrollHeight * ratio,
+      behavior: 'auto' 
+    });
   }
 });
 </script>
@@ -290,57 +328,429 @@ window.addEventListener('message', event => {
 function getNonce() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let nonce = '';
-  for (let i = 0; i < 32; i++) nonce += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 0; i < 32; i++) {
+    nonce += chars[Math.floor(Math.random() * chars.length)];
+  }
   return nonce;
 }
 
+// Ajouter une nouvelle catégorie
+async function addNewCategory(provider) {
+  const categoryName = await vscode.window.showInputBox({
+    prompt: 'Nom de la nouvelle catégorie',
+    placeHolder: 'ex: API, Database, Frontend...'
+  });
+  
+  if (!categoryName) return;
+  
+  if (provider.addCategory(categoryName)) {
+    vscode.window.showInformationMessage(`Catégorie "${categoryName}" créée avec succès`);
+    provider.refresh();
+  }
+}
+
+// Créer un nouveau template
+async function createNewTemplate(provider) {
+  const categories = Object.keys(provider.templates);
+  if (categories.length === 0) {
+    vscode.window.showErrorMessage('Aucune catégorie disponible. Créez une catégorie d\'abord.');
+    return;
+  }
+
+  const category = await vscode.window.showQuickPick(categories, {
+    placeHolder: 'Sélectionnez une catégorie'
+  });
+  
+  if (!category) return;
+
+  const templateName = await vscode.window.showInputBox({
+    prompt: 'Nom du template',
+    placeHolder: 'ex: Diagram, Component...'
+  });
+  
+  if (!templateName) return;
+
+  if (provider.templates[category][templateName]) {
+    vscode.window.showErrorMessage(`"${templateName}" existe déjà dans cette catégorie`);
+    return;
+  }
+
+  const templateContent = await vscode.window.showInputBox({
+    prompt: 'Contenu du template',
+    placeHolder: 'Collez le contenu du template...',
+    ignoreFocusOut: true
+  });
+  
+  if (!templateContent) return;
+
+  if (provider.addTemplate(category, templateName, templateContent)) {
+    vscode.window.showInformationMessage(`Template "${templateName}" créé avec succès`);
+    provider.refresh();
+  }
+}
+
+// Éditer un template existant
+async function editTemplate(provider, categoryName, templateName) {
+  const currentContent = provider.templates[categoryName][templateName];
+  
+  const newContent = await vscode.window.showInputBox({
+    prompt: `Éditer le template "${templateName}"`,
+    value: currentContent,
+    ignoreFocusOut: true
+  });
+  
+  if (newContent !== undefined && newContent !== currentContent) {
+    if (provider.updateTemplate(categoryName, templateName, newContent)) {
+      vscode.window.showInformationMessage(`Template "${templateName}" modifié avec succès`);
+      provider.refresh();
+    }
+  }
+}
+
+// Supprimer un template
+async function deleteTemplate(provider, categoryName, templateName) {
+  const confirmation = await vscode.window.showWarningMessage(
+    `Êtes-vous sûr de vouloir supprimer "${templateName}"?`,
+    'Supprimer',
+    'Annuler'
+  );
+  
+  if (confirmation === 'Supprimer') {
+    if (provider.deleteTemplate(categoryName, templateName)) {
+      vscode.window.showInformationMessage(`Template "${templateName}" supprimé`);
+      provider.refresh();
+    }
+  }
+}
+
+// Supprimer une catégorie
+async function deleteCategory(provider, categoryName) {
+  const templateCount = Object.keys(provider.templates[categoryName] || {}).length;
+  const confirmation = await vscode.window.showWarningMessage(
+    `Supprimer la catégorie "${categoryName}" et ses ${templateCount} template(s) ?`,
+    'Supprimer',
+    'Annuler'
+  );
+
+  if (confirmation === 'Supprimer') {
+    if (provider.deleteCategory(categoryName)) {
+      vscode.window.showInformationMessage(`Catégorie "${categoryName}" supprimée`);
+      provider.refresh();
+    }
+  }
+}
+
+
+// Ajouter une nouvelle catégorie
+async function addNewCategory(provider) {
+  const categoryName = await vscode.window.showInputBox({
+    prompt: 'Nom de la nouvelle catégorie',
+    placeHolder: 'ex: API, Database, Frontend...'
+  });
+  
+  if (!categoryName) return;
+  
+  if (provider.addCategory(categoryName)) {
+    vscode.window.showInformationMessage(`Catégorie "${categoryName}" créée avec succès`);
+    provider.refresh();
+  }
+}
+
+// Créer un nouveau template
+async function createNewTemplate(provider) {
+  const categories = Object.keys(provider.templates);
+  if (categories.length === 0) {
+    vscode.window.showErrorMessage('Aucune catégorie disponible. Créez une catégorie d\'abord.');
+    return;
+  }
+
+  const category = await vscode.window.showQuickPick(categories, {
+    placeHolder: 'Sélectionnez une catégorie'
+  });
+  
+  if (!category) return;
+
+  const templateName = await vscode.window.showInputBox({
+    prompt: 'Nom du template',
+    placeHolder: 'ex: Diagram, Component...'
+  });
+  
+  if (!templateName) return;
+
+  if (provider.templates[category][templateName]) {
+    vscode.window.showErrorMessage(`"${templateName}" existe déjà dans cette catégorie`);
+    return;
+  }
+
+  const templateContent = await vscode.window.showInputBox({
+    prompt: 'Contenu du template',
+    placeHolder: 'Collez le contenu du template...',
+    ignoreFocusOut: true
+  });
+  
+  if (!templateContent) return;
+
+  if (provider.addTemplate(category, templateName, templateContent)) {
+    vscode.window.showInformationMessage(`Template "${templateName}" créé avec succès`);
+    provider.refresh();
+  }
+}
+
+// Éditer un template existant
+async function editTemplate(provider, categoryName, templateName) {
+  const currentContent = provider.templates[categoryName][templateName];
+  
+  const newContent = await vscode.window.showInputBox({
+    prompt: `Éditer le template "${templateName}"`,
+    value: currentContent,
+    ignoreFocusOut: true
+  });
+  
+  if (newContent !== undefined && newContent !== currentContent) {
+    if (provider.updateTemplate(categoryName, templateName, newContent)) {
+      vscode.window.showInformationMessage(`Template "${templateName}" modifié avec succès`);
+      provider.refresh();
+    }
+  }
+}
+
+// Supprimer un template
+async function deleteTemplate(provider, categoryName, templateName) {
+  const confirmation = await vscode.window.showWarningMessage(
+    `Êtes-vous sûr de vouloir supprimer "${templateName}"?`,
+    'Supprimer',
+    'Annuler'
+  );
+  
+  if (confirmation === 'Supprimer') {
+    if (provider.deleteTemplate(categoryName, templateName)) {
+      vscode.window.showInformationMessage(`Template "${templateName}" supprimé`);
+      provider.refresh();
+    }
+  }
+}
+
+// Supprimer une catégorie
+async function deleteCategory(provider, categoryName) {
+  const templateCount = Object.keys(provider.templates[categoryName] || {}).length;
+  const confirmation = await vscode.window.showWarningMessage(
+    `Supprimer la catégorie "${categoryName}" et ses ${templateCount} template(s) ?`,
+    'Supprimer',
+    'Annuler'
+  );
+
+  if (confirmation === 'Supprimer') {
+    if (provider.deleteCategory(categoryName)) {
+      vscode.window.showInformationMessage(`Catégorie "${categoryName}" supprimée`);
+      provider.refresh();
+    }
+  }
+}
+
+// template d'arbre pour parser templates.json vers l'arborescence de la vue 
 class TemplateProvider {
   constructor() {
     this._onDidChangeTreeData = new vscode.EventEmitter();
     this.onDidChangeTreeData = this._onDidChangeTreeData.event;
+    this.templatesFilePath = this._getTemplatesPath();
+    this.templatesFilePath = this._getTemplatesPath();
     this.templates = this._loadTemplates();
+  }
+
+  _getTemplatesPath() {
+    return path.join(__dirname, 'templates.json');
   }
 
   _loadTemplates() {
     try {
-      const folders = vscode.workspace.workspaceFolders;
-      if (!folders || folders.length === 0) return {};
-      const filePath = path.join(folders[0].uri.fsPath, 'templates.json');
-      const raw = fs.readFileSync(filePath, 'utf8');
+      if (!this.templatesFilePath) return {};
+      const raw = fs.readFileSync(this.templatesFilePath, 'utf8');
       return JSON.parse(raw);
     } catch (e) {
       return {};
     }
   }
 
+  _saveTemplates() {
+    try {
+      if (!this.templatesFilePath) return false;
+      fs.writeFileSync(this.templatesFilePath, JSON.stringify(this.templates, null, 2), 'utf8');
+      return true;
+    } catch (e) {
+      vscode.window.showErrorMessage(`Erreur lors de la sauvegarde: ${e.message}`);
+      return false;
+    }
+  }
+
   getChildren(element) {
     if (!element) {
-      return Object.keys(this.templates || {}).map(cat => ({ type: 'category', label: cat }));
+      // Recharge a chaque ouverture de la racine pour refleter templates.json.
+      this.templates = this._loadTemplates();
+      return Object.keys(this.templates || {})
+        .sort((a, b) => a.localeCompare(b, 'fr'))
+        .map(cat => ({ type: 'category', label: cat }));
+      // Recharge a chaque ouverture de la racine pour refleter templates.json.
+      this.templates = this._loadTemplates();
+      return Object.keys(this.templates || {})
+        .sort((a, b) => a.localeCompare(b, 'fr'))
+        .map(cat => ({ type: 'category', label: cat }));
     }
     if (element.type === 'category') {
       const items = this.templates[element.label] || {};
-      return Object.keys(items).map(k => ({ type: 'template', label: k, content: items[k] }));
+      return Object.keys(items)
+        .sort((a, b) => a.localeCompare(b, 'fr'))
+        .map(k => ({ 
+        type: 'template', 
+        label: k, 
+        content: items[k], 
+        categoryLabel: element.label 
+      }));
+      return Object.keys(items)
+        .sort((a, b) => a.localeCompare(b, 'fr'))
+        .map(k => ({ 
+        type: 'template', 
+        label: k, 
+        content: items[k], 
+        categoryLabel: element.label 
+      }));
     }
     return [];
   }
 
   getTreeItem(element) {
     if (element.type === 'category') {
-      return new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.Collapsed);
+      const ti = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.Collapsed);
+      ti.contextValue = 'category';
+      return ti;
+      const ti = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.Collapsed);
+      ti.contextValue = 'category';
+      return ti;
     }
     const ti = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.None);
     ti.tooltip = element.content;
+    ti.contextValue = 'template';
+    ti.contextValue = 'template';
     ti.command = {
       command: 'visualizer.copyTemplate',
       title: 'Copier',
       arguments: [element.label, element.content]
     };
+    ti.iconPath = new vscode.ThemeIcon('file-text');
+    ti.iconPath = new vscode.ThemeIcon('file-text');
     return ti;
   }
 
   refresh() {
     this.templates = this._loadTemplates();
     this._onDidChangeTreeData.fire();
+  }
+
+  addCategory(categoryName) {
+    if (!categoryName || categoryName.trim() === '') return false;
+    if (this.templates[categoryName]) {
+      vscode.window.showErrorMessage(`La catégorie "${categoryName}" existe déjà`);
+      return false;
+    }
+    this.templates[categoryName] = {};
+    return this._saveTemplates();
+  }
+
+  addTemplate(categoryName, templateName, content) {
+    if (!this.templates[categoryName]) {
+      vscode.window.showErrorMessage(`La catégorie "${categoryName}" n'existe pas`);
+      return false;
+    }
+    if (!templateName || templateName.trim() === '') return false;
+    this.templates[categoryName][templateName] = content;
+    return this._saveTemplates();
+  }
+
+  updateTemplate(categoryName, templateName, newContent) {
+    if (!this.templates[categoryName] || !this.templates[categoryName][templateName]) {
+      return false;
+    }
+    this.templates[categoryName][templateName] = newContent;
+    return this._saveTemplates();
+  }
+
+  deleteTemplate(categoryName, templateName) {
+    if (!this.templates[categoryName] || !this.templates[categoryName][templateName]) {
+      return false;
+    }
+    delete this.templates[categoryName][templateName];
+    return this._saveTemplates();
+  }
+
+  deleteCategory(categoryName) {
+    if (!this.templates[categoryName]) {
+      return false;
+    }
+    delete this.templates[categoryName];
+    return this._saveTemplates();
+  }
+
+  renameTemplate(categoryName, oldName, newName) {
+    if (!this.templates[categoryName] || !this.templates[categoryName][oldName]) {
+      return false;
+    }
+    const content = this.templates[categoryName][oldName];
+    delete this.templates[categoryName][oldName];
+    this.templates[categoryName][newName] = content;
+    return this._saveTemplates();
+  }
+
+  addCategory(categoryName) {
+    if (!categoryName || categoryName.trim() === '') return false;
+    if (this.templates[categoryName]) {
+      vscode.window.showErrorMessage(`La catégorie "${categoryName}" existe déjà`);
+      return false;
+    }
+    this.templates[categoryName] = {};
+    return this._saveTemplates();
+  }
+
+  addTemplate(categoryName, templateName, content) {
+    if (!this.templates[categoryName]) {
+      vscode.window.showErrorMessage(`La catégorie "${categoryName}" n'existe pas`);
+      return false;
+    }
+    if (!templateName || templateName.trim() === '') return false;
+    this.templates[categoryName][templateName] = content;
+    return this._saveTemplates();
+  }
+
+  updateTemplate(categoryName, templateName, newContent) {
+    if (!this.templates[categoryName] || !this.templates[categoryName][templateName]) {
+      return false;
+    }
+    this.templates[categoryName][templateName] = newContent;
+    return this._saveTemplates();
+  }
+
+  deleteTemplate(categoryName, templateName) {
+    if (!this.templates[categoryName] || !this.templates[categoryName][templateName]) {
+      return false;
+    }
+    delete this.templates[categoryName][templateName];
+    return this._saveTemplates();
+  }
+
+  deleteCategory(categoryName) {
+    if (!this.templates[categoryName]) {
+      return false;
+    }
+    delete this.templates[categoryName];
+    return this._saveTemplates();
+  }
+
+  renameTemplate(categoryName, oldName, newName) {
+    if (!this.templates[categoryName] || !this.templates[categoryName][oldName]) {
+      return false;
+    }
+    const content = this.templates[categoryName][oldName];
+    delete this.templates[categoryName][oldName];
+    this.templates[categoryName][newName] = content;
+    return this._saveTemplates();
   }
 }
 
