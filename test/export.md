@@ -9,10 +9,12 @@ math: katex
 ## Diagramme Mermaid
 
 ```mermaid
-flowchart LR
-  A[A] --> B[B]
-  B -->|forbid| C[forbidden]
-  B --> D(dddddddd)
+gantt
+    title Example Gantt
+    dateFormat  YYYY-MM-DD
+    section Planning
+    Task A :a1, 2024-01-01, 7d
+    Task B :after a1, 5d
  ```
  
 ```mermaid
@@ -85,8 +87,8 @@ sequenceDiagram
     Bob-->>John: Jolly good!
    ```
 
-   ---
-   ::: parent
+  ---
+  ::: parent
 contenu du parent
 ::: enfant
 contenu de l'enfant
