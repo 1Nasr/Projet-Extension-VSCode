@@ -5,18 +5,41 @@
   "engines": {
     "vscode": "^1.100.33714"
   },
-  "activationEvents": [
-    "onView:visualizerView",
-    "onCommand:visualizer.markdownPreview",
-    "onCommand:visualizer.copyTemplate",
-    "onCommand:visualizer.createTemplate",
-    "onCommand:visualizer.editTemplate",
-    "onCommand:visualizer.deleteTemplate",
-    "onCommand:visualizer.addCategory",
-    "onCommand:visualizer.deleteCategory"
-  ],
   "main": "./extension.js",
   "contributes": {
+    "configuration": {
+      "title": "Markdown Visualizer",
+      "properties": {
+        "visualizer.preview.mermaidTheme": {
+          "type": "string",
+          "default": "default",
+          "enum": [
+            "default",
+            "dark",
+            "forest",
+            "neutral",
+            "base"
+          ],
+          "description": "Theme Mermaid utilise dans le preview."
+        },
+        "visualizer.preview.updateMode": {
+          "type": "string",
+          "default": "onType",
+          "enum": [
+            "onType",
+            "onSave"
+          ],
+          "description": "Frequence de mise a jour du preview Markdown."
+        },
+        "visualizer.preview.fontSize": {
+          "type": "number",
+          "default": 16,
+          "minimum": 10,
+          "maximum": 40,
+          "description": "Taille de police du preview en pixels."
+        }
+      }
+    },
     "viewsContainers": {
       "activitybar": [
         {
@@ -30,18 +53,26 @@
       "visualizerContainer": [
         {
           "id": "visualizerView",
-          "name": "Templates"
+          "name": "Templates",
+          "icon": "$(symbol-class)"
         }
       ]
     },
     "commands": [
       {
         "command": "visualizer.markdownPreview",
-        "title": "markdown Preview"
+        "title": "markdown Preview",
+        "icon": "$(preview)"
+      },
+      {
+        "command": "visualizer.openPreviewSettings",
+        "title": "Ouvrir les reglages du preview",
+        "icon": "$(gear)"
       },
       {
         "command": "visualizer.copyTemplate",
-        "title": "Copier le template"
+        "title": "Copier le template",
+        "icon": "$(copy)"
       },
       {
         "command": "visualizer.createTemplate",
@@ -78,6 +109,11 @@
         },
         {
           "command": "visualizer.createTemplate",
+          "when": "view == visualizerView",
+          "group": "navigation"
+        },
+        {
+          "command": "visualizer.openPreviewSettings",
           "when": "view == visualizerView",
           "group": "navigation"
         }

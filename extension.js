@@ -35,6 +35,7 @@ function activate(context) {
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider('visualizerView', provider),
     vscode.commands.registerCommand('visualizer.markdownPreview', () => openPreview(context)),
+    vscode.commands.registerCommand('visualizer.openPreviewSettings', openPreviewSettings),
     vscode.commands.registerCommand('visualizer.copyTemplate', (label, content) => copyTemplate(label, content)),
     vscode.commands.registerCommand('visualizer.createTemplate', () => createNewTemplate(provider)),
     vscode.commands.registerCommand('visualizer.editTemplate', (item) => {
@@ -77,6 +78,10 @@ function copyTemplate(label, content) {
   );
 }
 
+function openPreviewSettings() {
+  vscode.commands.executeCommand('workbench.action.openSettings', 'visualizer.preview');
+}
+
 function openPreview(context) {
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.document.languageId !== 'markdown') {
@@ -95,24 +100,46 @@ function openPreview(context) {
 
   function update() {
     const text = editor.document.getText();
-    panel.webview.html = renderWithMarp(text, nonce);
+    const settings = getPreviewSettings();
+    panel.webview.html = renderWithMarp(text, nonce, settings);
+  }
+
+  function subscribeToDocumentChanges(mode) {
+    if (mode === 'onSave') {
+      return vscode.workspace.onDidSaveTextDocument((document) => {
+        if (document === editor.document) update();
+      });
+    }
+
+    return vscode.workspace.onDidChangeTextDocument((event) => {
+      if (event.document === editor.document) update();
+    });
   }
 
   update();
 
-  const changeListener = vscode.workspace.onDidChangeTextDocument((event) => {
-    if (event.document === editor.document) update();
+  let changeListener = subscribeToDocumentChanges(getPreviewSettings().updateMode);
+
+  const configListener = vscode.workspace.onDidChangeConfiguration((event) => {
+    if (event.affectsConfiguration('visualizer.preview')) {
+      if (event.affectsConfiguration('visualizer.preview.updateMode')) {
+        changeListener.dispose();
+        changeListener = subscribeToDocumentChanges(getPreviewSettings().updateMode);
+      }
+      update();
+    }
   });
 
   const scrollListener = setupScrollSync(editor, panel);
 
   panel.onDidDispose(() => {
     changeListener.dispose();
+    configListener.dispose();
     scrollListener.dispose();
   });
 }
 
-function renderWithMarp(markdown, nonce) {
+function renderWithMarp(markdown, nonce, settings) {
   const marp = new Marp({
     html: true,
     math: 'katex'
@@ -135,7 +162,17 @@ img-src https://cdn.jsdelivr.net data:;
 ">
 <style>
 ${css}
-section { overflow: visible; }
+section {
+  overflow: visible;
+  font-size: ${settings.fontSize}px !important;
+}
+section p,
+section li,
+section blockquote,
+section pre,
+section code {
+  font-size: ${settings.fontSize}px;
+}
 .mermaid { width: 100%; }
 .mermaid svg { overflow: visible; max-width: 100%; }
 body {
@@ -143,6 +180,7 @@ body {
   color: #ddd;
   padding: 1.5rem;
   font-family: system-ui, sans-serif;
+  font-size: ${settings.fontSize}px;
 }
 html { scroll-behavior: smooth; }
 </style>
@@ -155,7 +193,7 @@ ${html}
 <script nonce="${nonce}" type="module">
 import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
 
-mermaid.initialize({ startOnLoad: false, theme: "default" });
+mermaid.initialize({ startOnLoad: false, theme: ${JSON.stringify(settings.mermaidTheme)} });
 
 async function renderMermaids() {
   const codes = document.querySelectorAll('pre > code.language-mermaid');
@@ -194,6 +232,15 @@ window.addEventListener('message', (event) => {
 </script>
 </body>
 </html>`;
+}
+
+function getPreviewSettings() {
+  const config = vscode.workspace.getConfiguration('visualizer.preview');
+  return {
+    mermaidTheme: config.get('mermaidTheme', 'default'),
+    updateMode: config.get('updateMode', 'onType'),
+    fontSize: Math.max(10, Math.min(40, Number(config.get('fontSize', 16)) || 16))
+  };
 }
 
 function getNonce() {
