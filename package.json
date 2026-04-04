@@ -7,7 +7,7 @@
   },
   "activationEvents": [
     "onView:visualizerView",
-    "onCommand:visualizer.markdownPreview",
+    "onCommand:visualizer.markdownPreview", 
     "onCommand:visualizer.openPreviewSettings",
     "onCommand:visualizer.copyTemplate",
     "onCommand:visualizer.createTemplate",
@@ -15,7 +15,8 @@
     "onCommand:visualizer.deleteTemplate",
     "onCommand:visualizer.addCategory",
     "onCommand:visualizer.deleteCategory",
-    "onCommand:visualizer.exportPdf"
+    "onCommand:visualizer.exportPdf", 
+    "onCommand:visualizer.selectTheme" 
   ],
   "main": "./extension.js",
   "contributes": {

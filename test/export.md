@@ -1,6 +1,6 @@
 ---
 marp: true
-theme: default
+theme: Default
 paginate: true
 math: katex 
 ---
@@ -94,38 +94,63 @@ contenu du parent
 contenu de l'enfant
 :::
 encore du parent
-jxjjxjjsjs
 :::
 
 
-```mermaid
-classDiagram
-    Animal <|-- Duck
-    Animal <|-- Fish
-    Animal <|-- Zebra
-    Animal : +int age
-    Animal : +String gender
-    Animal: +isMammal()
-    Animal: +mate()
-    class Duck{
-      +String beakColor
-      +swim()
-      +quack()
-    }
-    class Fish{
-      -int sizeInFeet
-      -canEat()
-    }
-    class Zebra{
-      +bool is_wild
-      +run()
-    }
+---
+::: info Informations utiles
+Contenu du bloc info
+:::
 
-    
-    ```
+::: warning Attention
+Contenu du bloc warning
+:::
 
-  
-  hhhhh
+---
+::: tip Astuce
+Contenu du bloc tip
+:::
+
+::: exercise Exercice 1
+Résous ce problème
+:::
+
+::: solution Correction
+Voici la solution
+:::
+
+---
 
 
-  
+:::COL {c2, l2, r2} 
+:::ITEM Centre 
+A
+:::
+
+
+:::ITEM Gauche
+B
+:::
+
+:::ITEM Droite
+C
+:::
+:::
+
+---
+
+:::COL {l2, r1}
+:::ITEM Theorie
+Un peu de texte.
+
+:::tip Astuce
+Pense a verifier les ratios.
+:::
+:::
+
+:::ITEM Pratique
+:::solution Correction
+La solution s'affiche ici.
+:::
+:::
+:::
