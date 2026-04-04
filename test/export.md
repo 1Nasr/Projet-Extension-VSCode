@@ -1,6 +1,6 @@
 ---
 marp: true
-theme: default
+theme: Default
 paginate: true
 math: katex 
 ---
@@ -92,4 +92,63 @@ contenu du parent
 contenu de l'enfant
 :::
 encore du parent
+:::
+
+
+---
+::: info Informations utiles
+Contenu du bloc info
+:::
+
+::: warning Attention
+Contenu du bloc warning
+:::
+
+---
+::: tip Astuce
+Contenu du bloc tip
+:::
+
+::: exercise Exercice 1
+Résous ce problème
+:::
+
+::: solution Correction
+Voici la solution
+:::
+
+---
+
+
+:::COL {c2, l2, r2} 
+:::ITEM Centre 
+A
+:::
+
+
+:::ITEM Gauche
+B
+:::
+
+:::ITEM Droite
+C
+:::
+:::
+
+---
+
+:::COL {l2, r1}
+:::ITEM Theorie
+Un peu de texte.
+
+:::tip Astuce
+Pense a verifier les ratios.
+:::
+:::
+
+:::ITEM Pratique
+:::solution Correction
+La solution s'affiche ici.
+:::
+:::
 :::

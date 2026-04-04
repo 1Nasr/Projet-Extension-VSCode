@@ -3,12 +3,13 @@
   "displayName": "Markdown Visualizer",
   "version": "0.0.1",
   "engines": {
-    "vscode": "^1.100.33714"
+    "vscode": "^1.97.2"
   },
   "activationEvents": [
     "onView:visualizerView",
     "onCommand:visualizer.markdownPreview",
-    "onCommand:visualizer.copyTemplate"
+    "onCommand:visualizer.copyTemplate",
+    "onCommand:visualizer.selectTheme"
   ],
   "main": "./extension.js",
   "contributes": {
