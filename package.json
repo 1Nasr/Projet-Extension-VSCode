@@ -5,12 +5,41 @@
   "engines": {
     "vscode": "^1.100.33714"
   },
-  "activationEvents": [
-    "onView:visualizerView",
-    "onCommand:visualizer.markdownPreview"
-  ],
   "main": "./extension.js",
   "contributes": {
+    "configuration": {
+      "title": "Markdown Visualizer",
+      "properties": {
+        "visualizer.preview.mermaidTheme": {
+          "type": "string",
+          "default": "default",
+          "enum": [
+            "default",
+            "dark",
+            "forest",
+            "neutral",
+            "base"
+          ],
+          "description": "Theme Mermaid utilise dans le preview."
+        },
+        "visualizer.preview.updateMode": {
+          "type": "string",
+          "default": "onType",
+          "enum": [
+            "onType",
+            "onSave"
+          ],
+          "description": "Frequence de mise a jour du preview Markdown."
+        },
+        "visualizer.preview.fontSize": {
+          "type": "number",
+          "default": 16,
+          "minimum": 10,
+          "maximum": 40,
+          "description": "Taille de police du preview en pixels."
+        }
+      }
+    },
     "viewsContainers": {
       "activitybar": [
         {
@@ -24,16 +53,89 @@
       "visualizerContainer": [
         {
           "id": "visualizerView",
-          "name": "Templates"
+          "name": "Templates",
+          "icon": "$(symbol-class)"
         }
       ]
     },
     "commands": [
       {
         "command": "visualizer.markdownPreview",
-        "title": "markdown Preview"
+        "title": "markdown Preview",
+        "icon": "$(preview)"
+      },
+      {
+        "command": "visualizer.openPreviewSettings",
+        "title": "Ouvrir les reglages du preview",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "visualizer.copyTemplate",
+        "title": "Copier le template",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "visualizer.createTemplate",
+        "title": "Creer un nouveau template",
+        "icon": "$(add)"
+      },
+      {
+        "command": "visualizer.editTemplate",
+        "title": "Editer le template",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "visualizer.deleteTemplate",
+        "title": "Supprimer le template",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "visualizer.addCategory",
+        "title": "Ajouter une categorie",
+        "icon": "$(new-folder)"
+      },
+      {
+        "command": "visualizer.deleteCategory",
+        "title": "Supprimer la categorie",
+        "icon": "$(folder-active)"
       }
-    ]
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "visualizer.addCategory",
+          "when": "view == visualizerView",
+          "group": "navigation"
+        },
+        {
+          "command": "visualizer.createTemplate",
+          "when": "view == visualizerView",
+          "group": "navigation"
+        },
+        {
+          "command": "visualizer.openPreviewSettings",
+          "when": "view == visualizerView",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "visualizer.editTemplate",
+          "when": "viewItem == template",
+          "group": "inline@1"
+        },
+        {
+          "command": "visualizer.deleteTemplate",
+          "when": "viewItem == template",
+          "group": "inline@2"
+        },
+        {
+          "command": "visualizer.deleteCategory",
+          "when": "viewItem == category",
+          "group": "inline@1"
+        }
+      ]
+    }
   },
   "scripts": {
     "lint": "eslint .",

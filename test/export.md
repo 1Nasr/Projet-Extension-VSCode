@@ -9,10 +9,12 @@ math: katex
 ## Diagramme Mermaid
 
 ```mermaid
-flowchart LR
-  A[A] --> B[B]
-  B -->|forbid| C[forbidden]
-  B --> D(dddddddd)
+gantt
+    title Example Gantt
+    dateFormat  YYYY-MM-DD
+    section Planning
+    Task A :a1, 2024-01-01, 7d
+    Task B :after a1, 5d
  ```
  
 ```mermaid
@@ -33,7 +35,9 @@ gitGraph
     merge feature
  ```
  ---
- 
+ ::: bonjour 
+
+
 ```mermaid
 classDiagram
     Animal <|-- Duck
@@ -57,6 +61,9 @@ classDiagram
       +run()
     }
  ```
+
+ :::
+
 ---
 ```mermaid
 graph TD;
@@ -79,3 +86,46 @@ sequenceDiagram
     John->>Bob: How about you?
     Bob-->>John: Jolly good!
    ```
+
+  ---
+  ::: parent
+contenu du parent
+::: enfant
+contenu de l'enfant
+:::
+encore du parent
+jxjjxjjsjs
+:::
+
+
+```mermaid
+classDiagram
+    Animal <|-- Duck
+    Animal <|-- Fish
+    Animal <|-- Zebra
+    Animal : +int age
+    Animal : +String gender
+    Animal: +isMammal()
+    Animal: +mate()
+    class Duck{
+      +String beakColor
+      +swim()
+      +quack()
+    }
+    class Fish{
+      -int sizeInFeet
+      -canEat()
+    }
+    class Zebra{
+      +bool is_wild
+      +run()
+    }
+
+    
+    ```
+
+  
+  hhhhh
+
+
+  
