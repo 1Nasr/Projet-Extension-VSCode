@@ -30,6 +30,11 @@ function initializeTemplatesFile() {
 function activate(context) {
   initializeTemplatesFile();
 
+  context.subscriptions.push(
+    vscode.commands.registerCommand('visualizer.exportPdf',
+      () => exportActiveEditorToPdf())
+  );
+
   const provider = new TemplateProvider();
 
   context.subscriptions.push(
@@ -97,6 +102,18 @@ function openPreview(context) {
   );
 
   const nonce = getNonce();
+  const sourceDocument = editor.document;
+
+  panel.webview.onDidReceiveMessage(async (message) => {
+    if (message?.type === 'exportPdf') {
+      try {
+        await exportMarkdownToPdf(sourceDocument.getText());
+      } catch (err) {
+        console.error(err);
+        vscode.window.showErrorMessage('Échec de l’export PDF.');
+      }
+    }
+  });
 
   function update() {
     const text = editor.document.getText();
@@ -182,11 +199,36 @@ body {
   font-family: system-ui, sans-serif;
   font-size: ${settings.fontSize}px;
 }
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+}
+.toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+.export-button {
+  background: #0e639c;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.export-button:hover {
+  background: #1177bb;
+}
 </style>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 </head>
 <body>
+<div class="toolbar">
+  <button class="export-button" id="exportPdf">Exporter en PDF</button>
+</div>
 ${html}
 <script nonce="${nonce}" src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <script nonce="${nonce}" src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
@@ -194,9 +236,22 @@ ${html}
 import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
 
 mermaid.initialize({ startOnLoad: false, theme: ${JSON.stringify(settings.mermaidTheme)} });
+const vscode = acquireVsCodeApi();
+const exportButton = document.getElementById('exportPdf');
+if (exportButton) {
+  exportButton.addEventListener('click', () => {
+    vscode.postMessage({ type: 'exportPdf' });
+  });
+}
+
+mermaid.initialize({ startOnLoad: false, theme: "default" });
 
 async function renderMermaids() {
-  const codes = document.querySelectorAll('pre > code.language-mermaid');
+  const codes = Array.from(document.querySelectorAll('code')).filter((code) => {
+    if (code.classList.contains('language-mermaid')) return true;
+    const dataLang = code.getAttribute('data-lang') || code.getAttribute('data-language');
+    return dataLang === 'mermaid';
+  });
   for (const code of codes) {
     const pre = code.parentElement;
     try {
@@ -350,122 +405,197 @@ async function deleteCategory(provider, categoryName) {
   }
 }
 
-class TemplateProvider {
-  constructor() {
-    this._onDidChangeTreeData = new vscode.EventEmitter();
-    this.onDidChangeTreeData = this._onDidChangeTreeData.event;
-    this.templatesFilePath = getTemplatesPath();
-    this.templates = this._loadTemplates();
+async function exportActiveEditorToPdf() {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor || editor.document.languageId !== 'markdown') {
+    vscode.window.showErrorMessage('Ouvrez un fichier Markdown (.md)');
+    return;
   }
 
-  _loadTemplates() {
+  await exportMarkdownToPdf(editor.document.getText());
+}
+
+function buildExportHtml(markdown, assets) { // construit un HTML sans connexion avec les assets locaux depuis node_modules
+  const marp = new Marp({
+    html: true,
+    math: 'katex'
+  });
+
+  const { html, css } = marp.render(markdown);
+
+  return `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<style>
+${css}
+body {
+  background: #ffffff;
+  color: #111111;
+  padding: 24px;
+  font-family: system-ui, sans-serif;
+}
+section {
+  overflow: visible;
+}
+.mermaid {
+  width: 100%;
+}
+.mermaid svg {
+  overflow: visible;
+  max-width: 100%;
+}
+</style>
+<link rel="stylesheet" href="${assets.katexCss}">
+</head>
+<body>
+${html}
+<script src="${assets.katexJs}"></script>
+<script src="${assets.katexAutoRenderJs}"></script>
+<script src="${assets.mermaidUmd}"></script>
+<script>
+async function waitForMermaid() {
+  const start = Date.now();
+  while (!window.mermaid) {
+    if (Date.now() - start > 5000) {
+      throw new Error('Mermaid non chargé');
+    }
+    await new Promise(r => setTimeout(r, 50));
+  }
+  return window.mermaid;
+}
+
+// remplacer le code Mermaid par du SVG ->
+
+async function renderMermaids(mermaid) { 
+  const codes = Array.from(document.querySelectorAll('code')).filter((code) => {
+    if (code.classList.contains('language-mermaid')) return true; // detecte le language mermaid 
+    const dataLang = code.getAttribute('data-lang') || code.getAttribute('data-language');
+    return dataLang === 'mermaid';
+  });
+  for (const code of codes) {
+    const pre = code.parentElement;
     try {
-      const raw = fs.readFileSync(this.templatesFilePath, 'utf8');
-      return JSON.parse(raw);
-    } catch (error) {
-      return {};
+      const renderId = 'mermaid-svg-' + Math.random().toString(36).substr(2, 9);
+      const result = await mermaid.render(renderId, code.textContent);
+      const div = document.createElement('div');
+      div.className = 'mermaid';
+      div.innerHTML = result.svg;
+      pre.replaceWith(div);
+    } catch (err) {
+      console.error('Erreur Mermaid:', err);
+      pre.textContent = 'Erreur de rendu Mermaid';
     }
   }
+}
 
-  _saveTemplates() {
+async function prepareExport() {
+  try {
+    const mermaid = await waitForMermaid();
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: "default",
+      securityLevel: "loose"
+    });
+
+    await renderMermaids(mermaid);
+
+    //  remplacer KaTeX
+
+    renderMathInElement(document.body, {
+      delimiters: [
+        { left: "$$", right: "$$", display: true },
+        { left: "$", right: "$", display: false }
+      ]
+    });
+  } catch (err) {
+    console.error('Préparation export:', err);
+    window.__exportError = err?.message || String(err);
+  } finally {
+    window.__exportReady = true;
+  }
+}
+
+window.addEventListener('load', prepareExport);
+</script>
+</body>
+</html>`;
+}
+
+async function exportMarkdownToPdf(markdown) { // prepare les chemins locaux des assets (KaTeX/Mermaid) pour l'export pdf.
+  const defaultName = 'export.pdf';
+  const targetUri = await vscode.window.showSaveDialog({
+    saveLabel: 'Enregistrer le PDF',
+    filters: { PDF: ['pdf'] },
+    defaultUri: vscode.Uri.file(path.join(os.homedir(), defaultName))
+  });
+
+  if (!targetUri) {
+    return;
+  }
+
+  const assets = getLocalAssetUrls();
+  const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'md-export-'));
+  const tempHtmlPath = path.join(tempDir, 'index.html');
+  const html = buildExportHtml(markdown, assets);
+  await fs.promises.writeFile(tempHtmlPath, html, 'utf8');
+
+  let browser;
+  let puppeteer;
+  try {
     try {
-      fs.writeFileSync(this.templatesFilePath, JSON.stringify(this.templates, null, 2), 'utf8');
-      return true;
-    } catch (error) {
-      vscode.window.showErrorMessage(`Erreur lors de la sauvegarde: ${error.message}`);
-      return false;
-    }
-  }
-
-  getChildren(element) {
-    if (!element) {
-      this.templates = this._loadTemplates();
-      return Object.keys(this.templates)
-        .sort((a, b) => a.localeCompare(b, 'fr'))
-        .map((category) => ({ type: 'category', label: category }));
+      puppeteer = require('puppeteer');
+    } catch (err) {
+      vscode.window.showErrorMessage('Puppeteer non installé. Lance "npm install" puis réessaie.');
+      return;
     }
 
-    if (element.type === 'category') {
-      const items = this.templates[element.label] || {};
-      return Object.keys(items)
-        .sort((a, b) => a.localeCompare(b, 'fr'))
-        .map((name) => ({
-          type: 'template',
-          label: name,
-          content: items[name],
-          categoryLabel: element.label
-        }));
+    browser = await puppeteer.launch({ //flags Chromium pour autoriser le chargement de fichiers locaux. Mermaid/KaTeX peuvent être bloqués si pas present
+      headless: 'new',
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--allow-file-access-from-files',
+        '--disable-web-security'
+      ]
+    });
+
+    const page = await browser.newPage();
+    await page.goto(`file://${tempHtmlPath}`, { waitUntil: 'networkidle0' });
+    await page.waitForFunction('window.__exportReady === true', { timeout: 15000 });
+    const exportError = await page.evaluate(() => window.__exportError || null);
+    if (exportError) {
+      throw new Error(exportError);
     }
+    await page.pdf({
+      path: targetUri.fsPath,
+      format: 'A4',
+      printBackground: true
+    });
 
-    return [];
-  }
-
-  getTreeItem(element) {
-    if (element.type === 'category') {
-      const item = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.Collapsed);
-      item.contextValue = 'category';
-      return item;
+    vscode.window.showInformationMessage(`PDF exporté : ${targetUri.fsPath}`);
+  } catch (error) {
+    console.error(error);
+    vscode.window.showErrorMessage('Échec de l’export PDF. Vérifie les logs.');
+  } finally {
+    if (browser) {
+      await browser.close();
     }
-
-    const item = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.None);
-    item.contextValue = 'template';
-    item.tooltip = element.content;
-    item.iconPath = new vscode.ThemeIcon('file-text');
-    item.command = {
-      command: 'visualizer.copyTemplate',
-      title: 'Copier',
-      arguments: [element.label, element.content]
-    };
-    return item;
+    await fs.promises.rm(tempDir, { recursive: true, force: true });
   }
+}
 
-  refresh() {
-    this.templates = this._loadTemplates();
-    this._onDidChangeTreeData.fire();
-  }
+function getLocalAssetUrls() { // Construit des url file:// vers les assets installés dans node_modules
+  const toFileUrl = (filePath) => vscode.Uri.file(filePath).toString();
+  const root = path.resolve(__dirname);
 
-  addCategory(categoryName) {
-    if (!categoryName || categoryName.trim() === '') return false;
-    if (this.templates[categoryName]) {
-      vscode.window.showErrorMessage(`La categorie "${categoryName}" existe deja`);
-      return false;
-    }
-
-    this.templates[categoryName] = {};
-    return this._saveTemplates();
-  }
-
-  addTemplate(categoryName, templateName, content) {
-    if (!this.templates[categoryName]) {
-      vscode.window.showErrorMessage(`La categorie "${categoryName}" n'existe pas`);
-      return false;
-    }
-    if (!templateName || templateName.trim() === '') return false;
-
-    this.templates[categoryName][templateName] = content;
-    return this._saveTemplates();
-  }
-
-  updateTemplate(categoryName, templateName, newContent) {
-    if (!this.templates[categoryName] || !this.templates[categoryName][templateName]) return false;
-
-    this.templates[categoryName][templateName] = newContent;
-    return this._saveTemplates();
-  }
-
-  deleteTemplate(categoryName, templateName) {
-    if (!this.templates[categoryName] || !this.templates[categoryName][templateName]) return false;
-
-    delete this.templates[categoryName][templateName];
-    return this._saveTemplates();
-  }
-
-  deleteCategory(categoryName) {
-    if (!this.templates[categoryName]) return false;
-
-    delete this.templates[categoryName];
-    return this._saveTemplates();
-  }
+  return {
+    katexCss: toFileUrl(path.join(root, 'node_modules/katex/dist/katex.min.css')),
+    katexJs: toFileUrl(path.join(root, 'node_modules/katex/dist/katex.min.js')),
+    katexAutoRenderJs: toFileUrl(path.join(root, 'node_modules/katex/dist/contrib/auto-render.min.js')),
+    mermaidUmd: toFileUrl(path.join(root, 'node_modules/mermaid/dist/mermaid.min.js'))
+  };
 }
 
 module.exports = { activate, deactivate };

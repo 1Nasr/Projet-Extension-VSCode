@@ -3,8 +3,14 @@
   "displayName": "Markdown Visualizer",
   "version": "0.0.1",
   "engines": {
-    "vscode": "^1.100.33714"
+    "vscode": "^1.97.0"
   },
+  "activationEvents": [
+    "onView:visualizerView",
+    "onCommand:visualizer.markdownPreview", 
+    "onCommand:visualizer.copyTemplate",
+    "onCommand:visualizer.exportPdf" 
+  ],
   "main": "./extension.js",
   "contributes": {
     "configuration": {
@@ -69,9 +75,9 @@
         "title": "Ouvrir les reglages du preview",
         "icon": "$(gear)"
       },
-      {
+      { 
         "command": "visualizer.copyTemplate",
-        "title": "Copier le template",
+        "title": "Copier le template" ,
         "icon": "$(copy)"
       },
       {
@@ -98,6 +104,10 @@
         "command": "visualizer.deleteCategory",
         "title": "Supprimer la categorie",
         "icon": "$(folder-active)"
+      },
+      {
+        "command": "visualizer.exportPdf",
+        "title": "Export Markdown to PDF" 
       }
     ],
     "menus": {
