@@ -1,6 +1,7 @@
 const vscode = require('vscode');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const { Marp } = require('@marp-team/marp-core');
 const { setupScrollSync } = require('./scroll');
 
@@ -30,11 +31,6 @@ function initializeTemplatesFile() {
 function activate(context) {
   initializeTemplatesFile();
 
-  context.subscriptions.push(
-    vscode.commands.registerCommand('visualizer.exportPdf',
-      () => exportActiveEditorToPdf())
-  );
-
   const provider = new TemplateProvider();
 
   context.subscriptions.push(
@@ -58,7 +54,8 @@ function activate(context) {
       if (item && item.type === 'category') {
         deleteCategory(provider, item.label);
       }
-    })
+    }),
+    vscode.commands.registerCommand('visualizer.exportPdf', () => exportActiveEditorToPdf())
   );
 
   const templateWatcher = vscode.workspace.createFileSystemWatcher('**/templates.json');
@@ -87,6 +84,99 @@ function openPreviewSettings() {
   vscode.commands.executeCommand('workbench.action.openSettings', 'visualizer.preview');
 }
 
+function processCustomBlocks(text) {
+  const lines = text.split('\n');
+  const output = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    if (trimmed === ':::') {
+      output.push(line);
+      i += 1;
+      continue;
+    }
+
+    const openMatch = trimmed.match(/^:::\s*(.*)$/);
+    if (openMatch) {
+      const title = openMatch[1].trim();
+      const innerLines = [];
+      i += 1;
+      let depth = 1;
+
+      while (i < lines.length) {
+        const inner = lines[i];
+        const innerTrimmed = inner.trim();
+
+        if (innerTrimmed === ':::') {
+          depth -= 1;
+          if (depth === 0) {
+            i += 1;
+            break;
+          }
+          innerLines.push(inner);
+        } else if (innerTrimmed.startsWith(':::')) {
+          depth += 1;
+          innerLines.push(inner);
+        } else {
+          innerLines.push(inner);
+        }
+
+        i += 1;
+      }
+
+      const innerProcessed = processCustomBlocks(innerLines.join('\n'));
+      output.push(renderBlockHTML(innerProcessed, title));
+      continue;
+    }
+
+    output.push(line);
+    i += 1;
+  }
+
+  return output.join('\n');
+}
+
+function renderBlockHTML(content, title) {
+  const titleHtml = title ? `<div class="custom-block-title">${title}</div>` : '';
+  return `<div class="custom-block">${titleHtml}<table><tr><td>${content}</td></tr></table></div>`;
+}
+
+const customBlockCSS = `
+.custom-block {
+  border: 2px solid #7c6af7;
+  border-radius: 8px;
+  padding: 0.5rem;
+  margin: 0.5rem 0;
+  background: rgba(124, 106, 247, 0.08);
+}
+.custom-block-title {
+  font-weight: bold;
+  color: #7c6af7;
+  margin-bottom: 0.4rem;
+  font-size: 0.9em;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.custom-block table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.custom-block td {
+  padding: 0.4rem;
+  vertical-align: top;
+}
+.custom-block .custom-block {
+  border-color: #f7a26a;
+  background: rgba(247, 162, 106, 0.08);
+}
+.custom-block .custom-block .custom-block-title {
+  color: #f7a26a;
+}
+`;
+
 function openPreview(context) {
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.document.languageId !== 'markdown') {
@@ -110,7 +200,7 @@ function openPreview(context) {
         await exportMarkdownToPdf(sourceDocument.getText());
       } catch (err) {
         console.error(err);
-        vscode.window.showErrorMessage('Échec de l’export PDF.');
+        vscode.window.showErrorMessage('Echec de l\'export PDF.');
       }
     }
   });
@@ -162,7 +252,8 @@ function renderWithMarp(markdown, nonce, settings) {
     math: 'katex'
   });
 
-  const { html, css } = marp.render(markdown);
+  const preprocessed = processCustomBlocks(markdown);
+  const { html, css } = marp.render(preprocessed);
 
   return `
 <!DOCTYPE html>
@@ -179,6 +270,7 @@ img-src https://cdn.jsdelivr.net data:;
 ">
 <style>
 ${css}
+${customBlockCSS}
 section {
   overflow: visible;
   font-size: ${settings.fontSize}px !important;
@@ -190,8 +282,13 @@ section pre,
 section code {
   font-size: ${settings.fontSize}px;
 }
-.mermaid { width: 100%; }
-.mermaid svg { overflow: visible; max-width: 100%; }
+.mermaid {
+  width: 100%;
+}
+.mermaid svg {
+  overflow: visible;
+  max-width: 100%;
+}
 body {
   background: #1e1e1e;
   color: #ddd;
@@ -235,7 +332,6 @@ ${html}
 <script nonce="${nonce}" type="module">
 import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
 
-mermaid.initialize({ startOnLoad: false, theme: ${JSON.stringify(settings.mermaidTheme)} });
 const vscode = acquireVsCodeApi();
 const exportButton = document.getElementById('exportPdf');
 if (exportButton) {
@@ -244,7 +340,7 @@ if (exportButton) {
   });
 }
 
-mermaid.initialize({ startOnLoad: false, theme: "default" });
+mermaid.initialize({ startOnLoad: false, theme: ${JSON.stringify(settings.mermaidTheme)} });
 
 async function renderMermaids() {
   const codes = Array.from(document.querySelectorAll('code')).filter((code) => {
@@ -252,6 +348,7 @@ async function renderMermaids() {
     const dataLang = code.getAttribute('data-lang') || code.getAttribute('data-language');
     return dataLang === 'mermaid';
   });
+
   for (const code of codes) {
     const pre = code.parentElement;
     try {
@@ -405,6 +502,124 @@ async function deleteCategory(provider, categoryName) {
   }
 }
 
+class TemplateProvider {
+  constructor() {
+    this._onDidChangeTreeData = new vscode.EventEmitter();
+    this.onDidChangeTreeData = this._onDidChangeTreeData.event;
+    this.templatesFilePath = getTemplatesPath();
+    this.templates = this._loadTemplates();
+  }
+
+  _loadTemplates() {
+    try {
+      const raw = fs.readFileSync(this.templatesFilePath, 'utf8');
+      return JSON.parse(raw);
+    } catch (error) {
+      return {};
+    }
+  }
+
+  _saveTemplates() {
+    try {
+      fs.writeFileSync(this.templatesFilePath, JSON.stringify(this.templates, null, 2), 'utf8');
+      return true;
+    } catch (error) {
+      vscode.window.showErrorMessage(`Erreur lors de la sauvegarde: ${error.message}`);
+      return false;
+    }
+  }
+
+  getChildren(element) {
+    if (!element) {
+      this.templates = this._loadTemplates();
+      return Object.keys(this.templates)
+        .sort((a, b) => a.localeCompare(b, 'fr'))
+        .map((category) => ({ type: 'category', label: category }));
+    }
+
+    if (element.type === 'category') {
+      const items = this.templates[element.label] || {};
+      return Object.keys(items)
+        .sort((a, b) => a.localeCompare(b, 'fr'))
+        .map((name) => ({
+          type: 'template',
+          label: name,
+          content: items[name],
+          categoryLabel: element.label
+        }));
+    }
+
+    return [];
+  }
+
+  getTreeItem(element) {
+    if (element.type === 'category') {
+      const item = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.Collapsed);
+      item.contextValue = 'category';
+      return item;
+    }
+
+    const item = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.None);
+    item.contextValue = 'template';
+    item.tooltip = element.content;
+    item.iconPath = new vscode.ThemeIcon('file-text');
+    item.command = {
+      command: 'visualizer.copyTemplate',
+      title: 'Copier',
+      arguments: [element.label, element.content]
+    };
+    return item;
+  }
+
+  refresh() {
+    this.templates = this._loadTemplates();
+    this._onDidChangeTreeData.fire();
+  }
+
+  addCategory(categoryName) {
+    if (!categoryName || categoryName.trim() === '') return false;
+    if (this.templates[categoryName]) {
+      vscode.window.showErrorMessage(`La categorie "${categoryName}" existe deja`);
+      return false;
+    }
+
+    this.templates[categoryName] = {};
+    return this._saveTemplates();
+  }
+
+  addTemplate(categoryName, templateName, content) {
+    if (!this.templates[categoryName]) {
+      vscode.window.showErrorMessage(`La categorie "${categoryName}" n'existe pas`);
+      return false;
+    }
+    if (!templateName || templateName.trim() === '') return false;
+
+    this.templates[categoryName][templateName] = content;
+    return this._saveTemplates();
+  }
+
+  updateTemplate(categoryName, templateName, newContent) {
+    if (!this.templates[categoryName] || !this.templates[categoryName][templateName]) return false;
+
+    this.templates[categoryName][templateName] = newContent;
+    return this._saveTemplates();
+  }
+
+  deleteTemplate(categoryName, templateName) {
+    if (!this.templates[categoryName] || !this.templates[categoryName][templateName]) return false;
+
+    delete this.templates[categoryName][templateName];
+    return this._saveTemplates();
+  }
+
+  deleteCategory(categoryName) {
+    if (!this.templates[categoryName]) return false;
+
+    delete this.templates[categoryName];
+    return this._saveTemplates();
+  }
+}
+
 async function exportActiveEditorToPdf() {
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.document.languageId !== 'markdown') {
@@ -415,13 +630,14 @@ async function exportActiveEditorToPdf() {
   await exportMarkdownToPdf(editor.document.getText());
 }
 
-function buildExportHtml(markdown, assets) { // construit un HTML sans connexion avec les assets locaux depuis node_modules
+function buildExportHtml(markdown, assets) {
   const marp = new Marp({
     html: true,
     math: 'katex'
   });
 
-  const { html, css } = marp.render(markdown);
+  const preprocessed = processCustomBlocks(markdown);
+  const { html, css } = marp.render(preprocessed);
 
   return `
 <!DOCTYPE html>
@@ -430,6 +646,7 @@ function buildExportHtml(markdown, assets) { // construit un HTML sans connexion
 <meta charset="UTF-8">
 <style>
 ${css}
+${customBlockCSS}
 body {
   background: #ffffff;
   color: #111111;
@@ -459,25 +676,24 @@ async function waitForMermaid() {
   const start = Date.now();
   while (!window.mermaid) {
     if (Date.now() - start > 5000) {
-      throw new Error('Mermaid non chargé');
+      throw new Error('Mermaid non charge');
     }
-    await new Promise(r => setTimeout(r, 50));
+    await new Promise((r) => setTimeout(r, 50));
   }
   return window.mermaid;
 }
 
-// remplacer le code Mermaid par du SVG ->
-
-async function renderMermaids(mermaid) { 
+async function renderMermaids(mermaid) {
   const codes = Array.from(document.querySelectorAll('code')).filter((code) => {
-    if (code.classList.contains('language-mermaid')) return true; // detecte le language mermaid 
+    if (code.classList.contains('language-mermaid')) return true;
     const dataLang = code.getAttribute('data-lang') || code.getAttribute('data-language');
     return dataLang === 'mermaid';
   });
+
   for (const code of codes) {
     const pre = code.parentElement;
     try {
-      const renderId = 'mermaid-svg-' + Math.random().toString(36).substr(2, 9);
+      const renderId = 'mermaid-svg-' + Math.random().toString(36).slice(2, 11);
       const result = await mermaid.render(renderId, code.textContent);
       const div = document.createElement('div');
       div.className = 'mermaid';
@@ -495,22 +711,20 @@ async function prepareExport() {
     const mermaid = await waitForMermaid();
     mermaid.initialize({
       startOnLoad: false,
-      theme: "default",
-      securityLevel: "loose"
+      theme: 'default',
+      securityLevel: 'loose'
     });
 
     await renderMermaids(mermaid);
 
-    //  remplacer KaTeX
-
     renderMathInElement(document.body, {
       delimiters: [
-        { left: "$$", right: "$$", display: true },
-        { left: "$", right: "$", display: false }
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
       ]
     });
   } catch (err) {
-    console.error('Préparation export:', err);
+    console.error('Preparation export:', err);
     window.__exportError = err?.message || String(err);
   } finally {
     window.__exportReady = true;
@@ -523,7 +737,7 @@ window.addEventListener('load', prepareExport);
 </html>`;
 }
 
-async function exportMarkdownToPdf(markdown) { // prepare les chemins locaux des assets (KaTeX/Mermaid) pour l'export pdf.
+async function exportMarkdownToPdf(markdown) {
   const defaultName = 'export.pdf';
   const targetUri = await vscode.window.showSaveDialog({
     saveLabel: 'Enregistrer le PDF',
@@ -531,9 +745,7 @@ async function exportMarkdownToPdf(markdown) { // prepare les chemins locaux des
     defaultUri: vscode.Uri.file(path.join(os.homedir(), defaultName))
   });
 
-  if (!targetUri) {
-    return;
-  }
+  if (!targetUri) return;
 
   const assets = getLocalAssetUrls();
   const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'md-export-'));
@@ -543,15 +755,16 @@ async function exportMarkdownToPdf(markdown) { // prepare les chemins locaux des
 
   let browser;
   let puppeteer;
+
   try {
     try {
       puppeteer = require('puppeteer');
     } catch (err) {
-      vscode.window.showErrorMessage('Puppeteer non installé. Lance "npm install" puis réessaie.');
+      vscode.window.showErrorMessage('Puppeteer non installe. Lance "npm install" puis reessaie.');
       return;
     }
 
-    browser = await puppeteer.launch({ //flags Chromium pour autoriser le chargement de fichiers locaux. Mermaid/KaTeX peuvent être bloqués si pas present
+    browser = await puppeteer.launch({
       headless: 'new',
       args: [
         '--no-sandbox',
@@ -568,16 +781,17 @@ async function exportMarkdownToPdf(markdown) { // prepare les chemins locaux des
     if (exportError) {
       throw new Error(exportError);
     }
+
     await page.pdf({
       path: targetUri.fsPath,
       format: 'A4',
       printBackground: true
     });
 
-    vscode.window.showInformationMessage(`PDF exporté : ${targetUri.fsPath}`);
+    vscode.window.showInformationMessage(`PDF exporte: ${targetUri.fsPath}`);
   } catch (error) {
     console.error(error);
-    vscode.window.showErrorMessage('Échec de l’export PDF. Vérifie les logs.');
+    vscode.window.showErrorMessage('Echec de l\'export PDF. Verifie les logs.');
   } finally {
     if (browser) {
       await browser.close();
@@ -586,7 +800,7 @@ async function exportMarkdownToPdf(markdown) { // prepare les chemins locaux des
   }
 }
 
-function getLocalAssetUrls() { // Construit des url file:// vers les assets installés dans node_modules
+function getLocalAssetUrls() {
   const toFileUrl = (filePath) => vscode.Uri.file(filePath).toString();
   const root = path.resolve(__dirname);
 

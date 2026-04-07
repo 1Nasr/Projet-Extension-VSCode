@@ -7,9 +7,15 @@
   },
   "activationEvents": [
     "onView:visualizerView",
-    "onCommand:visualizer.markdownPreview", 
+    "onCommand:visualizer.markdownPreview",
+    "onCommand:visualizer.openPreviewSettings",
     "onCommand:visualizer.copyTemplate",
-    "onCommand:visualizer.exportPdf" 
+    "onCommand:visualizer.createTemplate",
+    "onCommand:visualizer.editTemplate",
+    "onCommand:visualizer.deleteTemplate",
+    "onCommand:visualizer.addCategory",
+    "onCommand:visualizer.deleteCategory",
+    "onCommand:visualizer.exportPdf"
   ],
   "main": "./extension.js",
   "contributes": {
@@ -75,9 +81,9 @@
         "title": "Ouvrir les reglages du preview",
         "icon": "$(gear)"
       },
-      { 
+      {
         "command": "visualizer.copyTemplate",
-        "title": "Copier le template" ,
+        "title": "Copier le template",
         "icon": "$(copy)"
       },
       {
@@ -107,10 +113,19 @@
       },
       {
         "command": "visualizer.exportPdf",
-        "title": "Export Markdown to PDF" 
+        "title": "Export Markdown to PDF",
+        "icon": "$(file-pdf)"
       }
     ],
     "menus": {
+      "editor/title": [
+        {
+          "command": "visualizer.markdownPreview",
+          "when": "resourceLangId == markdown",
+          "group": "navigation@90",
+          "icon": "$(preview)"
+        }
+      ],
       "view/title": [
         {
           "command": "visualizer.addCategory",
