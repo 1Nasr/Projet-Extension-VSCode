@@ -307,6 +307,24 @@ html {
   justify-content: flex-end;
   margin-bottom: 1rem;
 }
+.reading-progress-track {
+  position: sticky;
+  top: 0;
+  z-index: 11;
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+}
+.reading-progress-bar {
+  width: 0%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #31c48d 0%, #2f9cf4 100%);
+  transition: width 0.08s linear;
+}
 .export-button {
   background: #0e639c;
   color: #fff;
@@ -323,6 +341,9 @@ html {
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 </head>
 <body>
+<div class="reading-progress-track" aria-hidden="true">
+  <div class="reading-progress-bar" id="readingProgressBar"></div>
+</div>
 <div class="toolbar">
   <button class="export-button" id="exportPdf">Exporter en PDF</button>
 </div>
@@ -334,10 +355,24 @@ import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.mi
 
 const vscode = acquireVsCodeApi();
 const exportButton = document.getElementById('exportPdf');
+const readingProgressBar = document.getElementById('readingProgressBar');
 if (exportButton) {
   exportButton.addEventListener('click', () => {
     vscode.postMessage({ type: 'exportPdf' });
   });
+}
+
+function updateReadingProgress() {
+  if (!readingProgressBar) return;
+  const doc = document.documentElement;
+  const scrollableHeight = doc.scrollHeight - doc.clientHeight;
+  if (scrollableHeight <= 0) {
+    readingProgressBar.style.width = '100%';
+    return;
+  }
+
+  const ratio = Math.max(0, Math.min(1, window.scrollY / scrollableHeight));
+  readingProgressBar.style.width = String(ratio * 100) + '%';
 }
 
 mermaid.initialize({ startOnLoad: false, theme: ${JSON.stringify(settings.mermaidTheme)} });
@@ -374,11 +409,15 @@ renderMathInElement(document.body, {
   ]
 });
 
+updateReadingProgress();
+window.addEventListener('scroll', updateReadingProgress, { passive: true });
+
 window.addEventListener('message', (event) => {
   const { type, ratio } = event.data;
   if (type === 'scroll') {
     const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
     window.scrollTo({ top: scrollHeight * ratio, behavior: 'auto' });
+    updateReadingProgress();
   }
 });
 </script>
