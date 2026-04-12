@@ -50,7 +50,18 @@ function setupScrollSync(editor, panel) {
     });
   });
 
-  return scrollListener;
+  const previewScrollListener = panel.webview.onDidReceiveMessage((message) => {
+    if (message?.type !== 'previewScroll') return;
+
+    const ratio = Math.max(0, Math.min(1, Number(message.ratio) || 0));
+    const targetLine = Math.round((editor.document.lineCount - 1) * ratio);
+    editor.revealRange(
+      new vscode.Range(targetLine, 0, targetLine, 0),
+      vscode.TextEditorRevealType.AtTop
+    );
+  });
+
+  return vscode.Disposable.from(scrollListener, previewScrollListener);
 }
 
 module.exports = {

@@ -304,6 +304,7 @@ html {
   top: 0;
   z-index: 10;
   display: flex;
+    gap: 0.5rem;
   justify-content: flex-end;
   margin-bottom: 1rem;
 }
@@ -325,6 +326,7 @@ html {
   background: linear-gradient(90deg, #31c48d 0%, #2f9cf4 100%);
   transition: width 0.08s linear;
 }
+.top-button,
 .export-button {
   background: #0e639c;
   color: #fff;
@@ -334,6 +336,7 @@ html {
   font-size: 0.9rem;
   cursor: pointer;
 }
+.top-button:hover,
 .export-button:hover {
   background: #1177bb;
 }
@@ -345,6 +348,7 @@ html {
   <div class="reading-progress-bar" id="readingProgressBar"></div>
 </div>
 <div class="toolbar">
+  <button class="top-button" id="boutonAllerEnHaut">Aller en haut</button>
   <button class="export-button" id="exportPdf">Exporter en PDF</button>
 </div>
 ${html}
@@ -354,8 +358,17 @@ ${html}
 import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
 
 const vscode = acquireVsCodeApi();
+const boutonAllerEnHaut = document.getElementById('boutonAllerEnHaut');
 const exportButton = document.getElementById('exportPdf');
 const readingProgressBar = document.getElementById('readingProgressBar');
+if (boutonAllerEnHaut) {
+  boutonAllerEnHaut.addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    vscode.postMessage({ type: 'previewScroll', ratio: 0 });
+    updateReadingProgress();
+  });
+}
+
 if (exportButton) {
   exportButton.addEventListener('click', () => {
     vscode.postMessage({ type: 'exportPdf' });
