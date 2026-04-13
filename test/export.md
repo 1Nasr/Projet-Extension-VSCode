@@ -157,13 +157,13 @@ La solution s'affiche ici.
 
 ---
 :::#3CF527 Attention rouge
-:::rgb(241, 217, 3) Alerte orange vif
+:::rgb(7, 3, 241) Alerte orange vif
 Contenu avec couleur rgb personnalisée
 :::
 Contenu avec couleur hex personnalisée
 :::
 
-::: warning rgb(234, 88, 12) Alerte orange vif
+:::rgb(234, 88, 12) Alerte orange vif
 Contenu avec couleur rgb personnalisée
 :::
 
@@ -172,6 +172,6 @@ Sans keyword prédéfini, juste une couleur
 :::
 
 ---
-::: info rgb(41, 182, 247) Info verte
+::: rgb(41, 182, 247) Info verte
 La couleur écrase celle du type prédéfini
 :::

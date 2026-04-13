@@ -411,13 +411,6 @@ const customBlockCSS = `
   padding: 0.2rem 0;
   vertical-align: top;
 }
-.custom-block .custom-block {
-  border-color: #f7a26a;
-  background: rgba(247, 162, 106, 0.08);
-}
-.custom-block .custom-block .custom-block-title {
-  color: #f7a26a;
-}
 .custom-columns {
   display: flex;
   gap: 1rem;
