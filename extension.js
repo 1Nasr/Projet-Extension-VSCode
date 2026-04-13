@@ -212,7 +212,7 @@ function renderBlockHTML(content, meta) {
     styleAttr = ` style="--block-accent: ${meta.customColor}; --block-bg: ${bg};"`;
   }
 
-  return `<div class="${blockClass}"${styleAttr}>${titleHtml}<table><tr><td>${content}</td></tr></table></div>`;
+  return `<div class="${blockClass}"${styleAttr}>${titleHtml}<div class="custom-block-content">${content}</div></div>`;
 }
 
 function parseColumnsMeta(rawHeader) {
@@ -405,13 +405,25 @@ const customBlockCSS = `
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
-.custom-block table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.custom-block td {
+.custom-block-content {
   padding: 0.2rem 0;
-  vertical-align: top;
+}
+.custom-block-content > :first-child {
+  margin-top: 0;
+}
+.custom-block-content > :last-child {
+  margin-bottom: 0;
+}
+.custom-block-content p,
+.custom-block-content ul,
+.custom-block-content ol,
+.custom-block-content li,
+.custom-block-content blockquote,
+.custom-block-content pre,
+.custom-block-content code,
+.custom-block-content strong,
+.custom-block-content em {
+  background: transparent !important;
 }
 .custom-columns {
   display: flex;
