@@ -5,17 +5,7 @@ const { Marp } = require('@marp-team/marp-core');
 const MarkdownIt = require('markdown-it');
 const { setupScrollSync } = require('./scroll');
 
-const SMART_BLOCK_TYPES = {
-  info: { className: 'info', label: 'Info' },
-  note: { className: 'info', label: 'Note' },
-  warning: { className: 'warning', label: 'Warning' },
-  danger: { className: 'warning', label: 'Danger' },
-  tip: { className: 'tip', label: 'Tip' },
-  astuce: { className: 'tip', label: 'Astuce' },
-  exercise: { className: 'exercise', label: 'Exercise' },
-  exercice: { className: 'exercise', label: 'Exercice' },
-  solution: { className: 'solution', label: 'Solution' }
-};
+
 const inlineMarkdown = new MarkdownIt({ html: true });
 
 function activate(context) {
@@ -159,23 +149,7 @@ function parseCustomBlockMeta(rawHeader) {
     remaining = remaining.replace(hexMatch[0], '').replace(/\s+/g, ' ').trim();
   }
 
-  const match = remaining.match(/^([^\s]+)(?:\s+(.*))?$/);
-  if (!match) {
-    return { type: null, title: remaining, isColumns: false, customColor };
-  }
-
-  const keyword = match[1].toLowerCase();
-  const smartType = SMART_BLOCK_TYPES[keyword];
-  if (!smartType) {
-    return { type: null, title: remaining, isColumns: false, customColor };
-  }
-
-  return {
-    type: smartType,
-    title: match[2] ? match[2].trim() : smartType.label,
-    isColumns: false,
-    customColor
-  };
+  return { type: null, title: remaining, isColumns: false, customColor };
 }
 
 function renderBlockHTML(content, meta) {
@@ -398,26 +372,6 @@ const customBlockCSS = `
 .custom-block td {
   padding: 0.2rem 0;
   vertical-align: top;
-}
-.custom-block-info {
-  --block-accent: #2f80ed;
-  --block-bg: rgba(47, 128, 237, 0.12);
-}
-.custom-block-warning {
-  --block-accent: #d97706;
-  --block-bg: rgba(217, 119, 6, 0.12);
-}
-.custom-block-tip {
-  --block-accent: #059669;
-  --block-bg: rgba(5, 150, 105, 0.12);
-}
-.custom-block-exercise {
-  --block-accent: #7c3aed;
-  --block-bg: rgba(124, 58, 237, 0.12);
-}
-.custom-block-solution {
-  --block-accent: #db2777;
-  --block-bg: rgba(219, 39, 119, 0.12);
 }
 .custom-block .custom-block {
   border-color: #f7a26a;

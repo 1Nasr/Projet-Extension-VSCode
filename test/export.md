@@ -155,7 +155,7 @@ La solution s'affiche ici.
 
 ---
 :::#3CF527 Attention rouge
-:::rgb(94, 3, 241) Alerte orange vif
+:::rgb(241, 217, 3) Alerte orange vif
 Contenu avec couleur rgb personnalisée
 :::
 Contenu avec couleur hex personnalisée
@@ -165,11 +165,11 @@ Contenu avec couleur hex personnalisée
 Contenu avec couleur rgb personnalisée
 :::
 
-::: #6366f1 Bloc générique indigo
+:::rgb(232, 241, 99) Bloc générique indigo
 Sans keyword prédéfini, juste une couleur
 :::
 
 ---
-::: info rgb(16, 19, 185) Info verte
+::: info rgb(41, 182, 247) Info verte
 La couleur écrase celle du type prédéfini
 :::
