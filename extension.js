@@ -69,7 +69,7 @@ function processCustomBlocks(text) {
     const line = lines[i];
     const trimmed = line.trim();
 
-    // Fermeture seule — ne devrait pas arriver ici (consommé dans la récursion)
+    // Fermeture seule, ne devrait pas arriver ici (consommé dans la récursion)
     // mais on la laisse passer telle quelle si orpheline
     if (trimmed === ':::') {
       output.push(line);
