@@ -1,6 +1,6 @@
 ---
 marp: true
-theme: Default
+theme: dark
 paginate: true
 math: katex 
 ---
@@ -157,13 +157,13 @@ La solution s'affiche ici.
 
 ---
 :::#3CF527 Attention rouge
-:::rgb(7, 3, 241) Alerte orange vif
+:::rgb(3, 213, 241) Alerte orange vif
 Contenu avec couleur rgb personnalisée
 :::
 Contenu avec couleur hex personnalisée
 :::
 
-:::rgb(234, 88, 12) Alerte orange vif
+:::rgb(234, 12, 223) Alerte orange vif
 Contenu avec couleur rgb personnalisée
 :::
 

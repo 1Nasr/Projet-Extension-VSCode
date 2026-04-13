@@ -29,6 +29,8 @@ function initializeTemplatesFile() {
   }
 }
 
+const inlineMarkdown = new MarkdownIt({ html : true});
+
 function activate(context) {
   initializeTemplatesFile();
 
