@@ -1,4 +1,4 @@
 {
-    "visualizer.preview.mermaidTheme": "dark",
-    "visualizer.preview.fontSize": 25
+    "visualizer.preview.mermaidTheme": "default",
+    "visualizer.preview.fontSize": 20
 }
