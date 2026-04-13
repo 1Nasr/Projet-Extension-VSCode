@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { Marp } = require('@marp-team/marp-core');
-const { setupScrollSync } = require('./scroll');
+const { configurerSynchroDefilement } = require('./scroll');
 
 function getTemplatesPath() {
   return path.join(__dirname, 'templates.json');
@@ -237,7 +237,7 @@ function openPreview(context) {
     }
   });
 
-  const scrollListener = setupScrollSync(editor, panel);
+  const scrollListener = configurerSynchroDefilement(editor, panel);
 
   panel.onDidDispose(() => {
     changeListener.dispose();
@@ -359,33 +359,56 @@ import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.mi
 
 const vscode = acquireVsCodeApi();
 const boutonAllerEnHaut = document.getElementById('boutonAllerEnHaut');
-const exportButton = document.getElementById('exportPdf');
-const readingProgressBar = document.getElementById('readingProgressBar');
+const boutonExporter = document.getElementById('exportPdf');
+const barreProgressionLecture = document.getElementById('readingProgressBar');
+let ignorerProchainEvenementDefilementApercu = false;
+let dernierEnvoiApercuMs = 0;
+let dernierRatioApercuEnvoye = -1;
 if (boutonAllerEnHaut) {
   boutonAllerEnHaut.addEventListener('click', () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     vscode.postMessage({ type: 'previewScroll', ratio: 0 });
-    updateReadingProgress();
+    mettreAJourProgressionLecture();
   });
 }
 
-if (exportButton) {
-  exportButton.addEventListener('click', () => {
+if (boutonExporter) {
+  boutonExporter.addEventListener('click', () => {
     vscode.postMessage({ type: 'exportPdf' });
   });
 }
 
-function updateReadingProgress() {
-  if (!readingProgressBar) return;
+function mettreAJourProgressionLecture() {
+  if (!barreProgressionLecture) return;
   const doc = document.documentElement;
   const scrollableHeight = doc.scrollHeight - doc.clientHeight;
   if (scrollableHeight <= 0) {
-    readingProgressBar.style.width = '100%';
+    barreProgressionLecture.style.width = '100%';
     return;
   }
 
   const ratio = Math.max(0, Math.min(1, window.scrollY / scrollableHeight));
-  readingProgressBar.style.width = String(ratio * 100) + '%';
+  barreProgressionLecture.style.width = String(ratio * 100) + '%';
+}
+
+function synchroniserEditeurDepuisDefilementApercu() {
+  if (ignorerProchainEvenementDefilementApercu) return;
+
+  const doc = document.documentElement;
+  const scrollableHeight = doc.scrollHeight - doc.clientHeight;
+  const ratio = scrollableHeight <= 0
+    ? 0
+    : Math.max(0, Math.min(1, window.scrollY / scrollableHeight));
+
+  const maintenantMs = Date.now();
+  const variationRatio = Math.abs(ratio - dernierRatioApercuEnvoye);
+  if (maintenantMs - dernierEnvoiApercuMs < 33 && variationRatio < 0.004) {
+    return;
+  }
+
+  vscode.postMessage({ type: 'previewScroll', ratio });
+  dernierEnvoiApercuMs = maintenantMs;
+  dernierRatioApercuEnvoye = ratio;
 }
 
 mermaid.initialize({ startOnLoad: false, theme: ${JSON.stringify(settings.mermaidTheme)} });
@@ -422,15 +445,22 @@ renderMathInElement(document.body, {
   ]
 });
 
-updateReadingProgress();
-window.addEventListener('scroll', updateReadingProgress, { passive: true });
+mettreAJourProgressionLecture();
+window.addEventListener('scroll', () => {
+  mettreAJourProgressionLecture();
+  synchroniserEditeurDepuisDefilementApercu();
+}, { passive: true });
 
 window.addEventListener('message', (event) => {
   const { type, ratio } = event.data;
   if (type === 'scroll') {
+    ignorerProchainEvenementDefilementApercu = true;
     const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
     window.scrollTo({ top: scrollHeight * ratio, behavior: 'auto' });
-    updateReadingProgress();
+    requestAnimationFrame(() => {
+      ignorerProchainEvenementDefilementApercu = false;
+    });
+    mettreAJourProgressionLecture();
   }
 });
 </script>
