@@ -143,9 +143,25 @@ function processCustomBlocks(text) {
   return output.join('\n');
 }
 
+// ---------------------------------------------------------------------------
+// Convertit une couleur #hex ou rgb(r,g,b) en rgba(r,g,b,alpha)
+// ---------------------------------------------------------------------------
+function hexOrRgbToRgba(color, alpha) {
+  const rgbMatch = color.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/);
+  if (rgbMatch) {
+    return `rgba(${rgbMatch[1]}, ${rgbMatch[2]}, ${rgbMatch[3]}, ${alpha})`;
+  }
+  let hex = color.replace('#', '');
+  if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 function parseCustomBlockMeta(rawHeader) {
   if (!rawHeader) {
-    return { type: null, title: '', isColumns: false };
+    return { type: null, title: '', isColumns: false, customColor: null };
   }
 
   const columnMeta = parseColumnsMeta(rawHeader);
@@ -153,21 +169,38 @@ function parseCustomBlockMeta(rawHeader) {
     return columnMeta;
   }
 
-  const match = rawHeader.match(/^([^\s]+)(?:\s+(.*))?$/);
+  // Extraire une couleur optionnelle : rgb(r,g,b) ou #rrggbb / #rgb
+  // La couleur peut apparaître n'importe où dans le header
+  let customColor = null;
+  let remaining = rawHeader;
+
+  const rgbMatch = remaining.match(/rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)/);
+  const hexMatch = remaining.match(/#[0-9a-fA-F]{3,6}\b/);
+
+  if (rgbMatch) {
+    customColor = rgbMatch[0];
+    remaining = remaining.replace(rgbMatch[0], '').replace(/\s+/g, ' ').trim();
+  } else if (hexMatch) {
+    customColor = hexMatch[0];
+    remaining = remaining.replace(hexMatch[0], '').replace(/\s+/g, ' ').trim();
+  }
+
+  const match = remaining.match(/^([^\s]+)(?:\s+(.*))?$/);
   if (!match) {
-    return { type: null, title: rawHeader, isColumns: false };
+    return { type: null, title: remaining, isColumns: false, customColor };
   }
 
   const keyword = match[1].toLowerCase();
   const smartType = SMART_BLOCK_TYPES[keyword];
   if (!smartType) {
-    return { type: null, title: rawHeader, isColumns: false };
+    return { type: null, title: remaining, isColumns: false, customColor };
   }
 
   return {
     type: smartType,
     title: match[2] ? match[2].trim() : smartType.label,
-    isColumns: false
+    isColumns: false,
+    customColor
   };
 }
 
@@ -182,7 +215,16 @@ function renderBlockHTML(content, meta) {
   const titleHtml = meta.title
     ? `<div class="custom-block-title">${meta.title}</div>`
     : '';
-  return `<div class="${blockClass}">${titleHtml}<table><tr><td>${content}</td></tr></table></div>`;
+
+  // Si une couleur custom est fournie, on l'injecte via des CSS variables inline
+  // Elle écrase les couleurs définies par le type (info, warning, etc.)
+  let styleAttr = '';
+  if (meta.customColor) {
+    const bg = hexOrRgbToRgba(meta.customColor, 0.12);
+    styleAttr = ` style="--block-accent: ${meta.customColor}; --block-bg: ${bg};"`;
+  }
+
+  return `<div class="${blockClass}"${styleAttr}>${titleHtml}<table><tr><td>${content}</td></tr></table></div>`;
 }
 
 function parseColumnsMeta(rawHeader) {
