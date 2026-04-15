@@ -342,11 +342,23 @@ function buildExportHtml(markdown, assets) {
 <style>
 ${css}
 ${customBlockCSS}
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: #ffffff;
+}
 body {
   background: #ffffff;
   color: #111111;
-  padding: 24px;
   font-family: system-ui, sans-serif;
+}
+div.marpit {
+  margin: 0;
+}
+div.marpit > svg[data-marpit-svg] {
+  display: block;
+  margin: 0 auto;
 }
 section {
   overflow: visible;
@@ -357,6 +369,48 @@ section {
 .mermaid svg {
   overflow: visible;
   max-width: 100%;
+}
+@media print {
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  div.marpit {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  div.marpit > svg[data-marpit-svg] {
+    display: block;
+    margin: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    break-after: page;
+    page-break-after: always;
+  }
+  div.marpit > svg[data-marpit-svg]:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+  div.marpit > svg:first-child > foreignObject > section {
+    break-before: auto !important;
+    page-break-before: auto !important;
+  }
+  div.marpit > svg:last-child > foreignObject > section {
+    break-after: auto !important;
+    page-break-after: auto !important;
+  }
+  .custom-block,
+  .custom-block *,
+  .custom-columns-item,
+  .custom-columns-item * {
+    background-image: none !important;
+  }
+  .custom-block,
+  .custom-columns-item {
+    box-shadow: none !important;
+    filter: none !important;
+  }
 }
 </style>
 <link rel="stylesheet" href="${assets.katexCss}">

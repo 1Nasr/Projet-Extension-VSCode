@@ -301,6 +301,9 @@ const customBlockCSS = `
   margin: 0.75rem 0;
   background: var(--block-bg, rgba(124, 106, 247, 0.08));
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 .custom-block-title {
   font-weight: bold;
@@ -312,6 +315,7 @@ const customBlockCSS = `
 }
 .custom-block-content {
   padding: 0.2rem 0;
+  display: flow-root;
 }
 .custom-block-content > :first-child {
   margin-top: 0;
@@ -326,9 +330,23 @@ const customBlockCSS = `
 .custom-block-content blockquote,
 .custom-block-content pre,
 .custom-block-content code,
+.custom-block-content table,
+.custom-block-content thead,
+.custom-block-content tbody,
+.custom-block-content tr,
+.custom-block-content th,
+.custom-block-content td,
 .custom-block-content strong,
 .custom-block-content em {
   background: transparent !important;
+}
+.custom-block-content table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.custom-block-content th,
+.custom-block-content td {
+  border-color: transparent !important;
 }
 .custom-columns {
   display: flex;
