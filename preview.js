@@ -513,7 +513,9 @@ async function exportMarkdownToPdf(markdown) {
       return;
     }
 
+    const executablePath = await obtenirExecutableChromeEmbarque();
     browser = await puppeteer.launch({
+      executablePath,
       headless: 'new',
       args: [
         '--no-sandbox',
@@ -540,13 +542,39 @@ async function exportMarkdownToPdf(markdown) {
     vscode.window.showInformationMessage(`PDF exporte: ${targetUri.fsPath}`);
   } catch (error) {
     console.error(error);
-    vscode.window.showErrorMessage('Echec de l\'export PDF. Verifie les logs.');
+    vscode.window.showErrorMessage(error?.message || 'Echec de l\'export PDF. Verifie les logs.');
   } finally {
     if (browser) {
       await browser.close();
     }
     await fs.promises.rm(tempDir, { recursive: true, force: true });
   }
+}
+
+function obtenirExecutableChromeEmbarque() {
+  const {
+    Browser,
+    computeExecutablePath
+  } = require('@puppeteer/browsers');
+  const { PUPPETEER_REVISIONS } = require('puppeteer-core/internal/revisions.js');
+
+  const identifiantVersion = PUPPETEER_REVISIONS.chrome;
+  const dossierNavigateurs = path.join(__dirname, 'navigateurs-embarques');
+
+  const executablePath = computeExecutablePath({
+    cacheDir: dossierNavigateurs,
+    browser: Browser.CHROME,
+    buildId: identifiantVersion
+  });
+
+  if (fs.existsSync(executablePath)) {
+    return executablePath;
+  }
+
+  throw new Error(
+    'Chrome embarque pour l\'export PDF est introuvable. ' +
+    'Execute "npm run preparer-navigateurs" avant de packager l\'extension.'
+  );
 }
 
 function getLocalAssetUrls() {

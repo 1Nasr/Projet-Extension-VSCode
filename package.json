@@ -165,6 +165,7 @@
   },
   "scripts": {
     "lint": "eslint .",
+    "preparer-navigateurs": "node scripts/telecharger-navigateurs.js",
     "pretest": "npm run lint",
     "test": "vscode-test"
   },
@@ -178,6 +179,7 @@
   },
   "dependencies": {
     "@marp-team/marp-core": "^4.2.0",
+    "@puppeteer/browsers": "^2.11.2",
     "@wekanteam/markdown-it-mermaid": "^0.6.4",
     "katex": "^0.16.27",
     "markdown-it": "^14.1.0",
