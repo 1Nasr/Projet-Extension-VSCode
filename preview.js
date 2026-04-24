@@ -6,7 +6,9 @@ const { Marp } = require('@marp-team/marp-core');
 const { configurerSynchroDefilement } = require('./scroll');
 const { customBlockCSS, processCustomBlocks } = require('./customBlocks');
 
-function openPreview() {
+let preparationNavigateurPdfPromise;
+
+function openPreview(context) {
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.document.languageId !== 'markdown') {
     vscode.window.showErrorMessage('Ouvrez un fichier Markdown (.md)');
@@ -26,7 +28,7 @@ function openPreview() {
   panel.webview.onDidReceiveMessage(async (message) => {
     if (message?.type === 'exportPdf') {
       try {
-        await exportMarkdownToPdf(sourceDocument.getText());
+        await exportMarkdownToPdf(sourceDocument.getText(), context);
       } catch (err) {
         console.error(err);
         vscode.window.showErrorMessage('Echec de l\'export PDF.');
@@ -315,14 +317,14 @@ function getNonce() {
   return nonce;
 }
 
-async function exportActiveEditorToPdf() {
+async function exportActiveEditorToPdf(context) {
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.document.languageId !== 'markdown') {
     vscode.window.showErrorMessage('Ouvrez un fichier Markdown (.md)');
     return;
   }
 
-  await exportMarkdownToPdf(editor.document.getText());
+  await exportMarkdownToPdf(editor.document.getText(), context);
 }
 
 function buildExportHtml(markdown, assets) {
@@ -486,7 +488,7 @@ window.addEventListener('load', prepareExport);
 </html>`;
 }
 
-async function exportMarkdownToPdf(markdown) {
+async function exportMarkdownToPdf(markdown, context) {
   const defaultName = 'export.pdf';
   const targetUri = await vscode.window.showSaveDialog({
     saveLabel: 'Enregistrer le PDF',
@@ -513,7 +515,7 @@ async function exportMarkdownToPdf(markdown) {
       return;
     }
 
-    const executablePath = await obtenirExecutableChromeEmbarque();
+    const executablePath = await obtenirExecutableNavigateurPdf(context, true);
     browser = await puppeteer.launch({
       executablePath,
       headless: 'new',
@@ -551,19 +553,44 @@ async function exportMarkdownToPdf(markdown) {
   }
 }
 
-function obtenirExecutableChromeEmbarque() {
+function preparerNavigateurPdf(context) {
+  if (!preparationNavigateurPdfPromise) {
+    preparationNavigateurPdfPromise = obtenirExecutableNavigateurPdf(context, true).catch((error) => {
+      console.error(error);
+      vscode.window.showWarningMessage(
+        'Le navigateur pour l\'export PDF n\'a pas pu etre prepare. L\'export reessaiera au moment de la demande.'
+      );
+      preparationNavigateurPdfPromise = undefined;
+      return null;
+    });
+  }
+
+  return preparationNavigateurPdfPromise;
+}
+
+async function obtenirExecutableNavigateurPdf(context, installerSiNecessaire) {
   const {
     Browser,
-    computeExecutablePath
+    ChromeReleaseChannel,
+    computeExecutablePath,
+    computeSystemExecutablePath,
+    install
   } = require('@puppeteer/browsers');
   const { PUPPETEER_REVISIONS } = require('puppeteer-core/internal/revisions.js');
 
-  const identifiantVersion = PUPPETEER_REVISIONS.chrome;
-  const dossierNavigateurs = path.join(__dirname, 'navigateurs-embarques');
+  const chromeInstalle = obtenirChromeInstalle(Browser, ChromeReleaseChannel, computeSystemExecutablePath);
+  if (chromeInstalle) {
+    return chromeInstalle;
+  }
+
+  const identifiantVersion = PUPPETEER_REVISIONS['chrome-headless-shell'];
+  const dossierNavigateurs = context?.globalStorageUri?.fsPath
+    ? path.join(context.globalStorageUri.fsPath, 'navigateurs-pdf')
+    : path.join(os.homedir(), '.markdown-visualizer', 'navigateurs-pdf');
 
   const executablePath = computeExecutablePath({
     cacheDir: dossierNavigateurs,
-    browser: Browser.CHROME,
+    browser: Browser.CHROMEHEADLESSSHELL,
     buildId: identifiantVersion
   });
 
@@ -571,10 +598,43 @@ function obtenirExecutableChromeEmbarque() {
     return executablePath;
   }
 
-  throw new Error(
-    'Chrome embarque pour l\'export PDF est introuvable. ' +
-    'Execute "npm run preparer-navigateurs" avant de packager l\'extension.'
+  if (!installerSiNecessaire) {
+    throw new Error('Navigateur pour l\'export PDF introuvable.');
+  }
+
+  await vscode.window.withProgress(
+    {
+      location: vscode.ProgressLocation.Notification,
+      title: 'Preparation du navigateur pour l\'export PDF',
+      cancellable: false
+    },
+    async () => {
+      await install({
+        cacheDir: dossierNavigateurs,
+        browser: Browser.CHROMEHEADLESSSHELL,
+        buildId: identifiantVersion
+      });
+    }
   );
+
+  if (!fs.existsSync(executablePath)) {
+    throw new Error(`Navigateur pour l'export PDF introuvable apres installation: ${executablePath}`);
+  }
+
+  return executablePath;
+}
+
+function obtenirChromeInstalle(Browser, ChromeReleaseChannel, computeSystemExecutablePath) {
+  try {
+    const executablePath = computeSystemExecutablePath({
+      browser: Browser.CHROME,
+      channel: ChromeReleaseChannel.STABLE
+    });
+
+    return fs.existsSync(executablePath) ? executablePath : null;
+  } catch (error) {
+    return null;
+  }
 }
 
 function getLocalAssetUrls() {
@@ -591,5 +651,6 @@ function getLocalAssetUrls() {
 
 module.exports = {
   exportActiveEditorToPdf,
-  openPreview
+  openPreview,
+  preparerNavigateurPdf
 };

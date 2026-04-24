@@ -9,7 +9,7 @@ const {
 const { PUPPETEER_REVISIONS } = require('puppeteer-core/internal/revisions.js');
 
 const dossierNavigateurs = path.resolve(__dirname, '..', 'navigateurs-embarques');
-const identifiantVersion = PUPPETEER_REVISIONS.chrome;
+const identifiantVersion = PUPPETEER_REVISIONS['chrome-headless-shell'];
 
 async function principal() {
   const plateforme = detectBrowserPlatform();
@@ -19,20 +19,20 @@ async function principal() {
 
   const cheminExecutable = computeExecutablePath({
     cacheDir: dossierNavigateurs,
-    browser: Browser.CHROME,
+    browser: Browser.CHROMEHEADLESSSHELL,
     buildId: identifiantVersion,
     platform: plateforme
   });
 
   if (fs.existsSync(cheminExecutable)) {
-    console.log(`Chrome est deja disponible : ${cheminExecutable}`);
+    console.log(`Chrome headless est deja disponible : ${cheminExecutable}`);
     return;
   }
 
-  console.log(`Installation de Chrome ${identifiantVersion} pour ${plateforme}...`);
+  console.log(`Installation de Chrome headless ${identifiantVersion} pour ${plateforme}...`);
   await install({
     cacheDir: dossierNavigateurs,
-    browser: Browser.CHROME,
+    browser: Browser.CHROMEHEADLESSSHELL,
     buildId: identifiantVersion,
     platform: plateforme
   });

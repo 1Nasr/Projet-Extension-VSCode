@@ -10,7 +10,7 @@ const {
   initializeTemplatesFile,
   openPreviewSettings
 } = require('./templates');
-const { openPreview, exportActiveEditorToPdf } = require('./preview');
+const { openPreview, exportActiveEditorToPdf, preparerNavigateurPdf } = require('./preview');
 
 function activate(context) {
   initializeTemplatesFile();
@@ -19,7 +19,7 @@ function activate(context) {
 
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider('visualizerView', provider),
-    vscode.commands.registerCommand('visualizer.markdownPreview', openPreview),
+    vscode.commands.registerCommand('visualizer.markdownPreview', () => openPreview(context)),
     vscode.commands.registerCommand('visualizer.openPreviewSettings', openPreviewSettings),
     vscode.commands.registerCommand('visualizer.copyTemplate', (label, content) => copyTemplate(label, content)),
     vscode.commands.registerCommand('visualizer.createTemplate', () => createNewTemplate(provider)),
@@ -39,7 +39,7 @@ function activate(context) {
         deleteCategory(provider, item.label);
       }
     }),
-    vscode.commands.registerCommand('visualizer.exportPdf', () => exportActiveEditorToPdf())
+    vscode.commands.registerCommand('visualizer.exportPdf', () => exportActiveEditorToPdf(context))
   );
 
   const templateWatcher = vscode.workspace.createFileSystemWatcher('**/templates.json');
@@ -52,6 +52,7 @@ function activate(context) {
 
   context.subscriptions.push(templateWatcher);
   provider.refresh();
+  preparerNavigateurPdf(context);
 }
 
 function deactivate() {}
