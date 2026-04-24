@@ -165,7 +165,9 @@
   },
   "scripts": {
     "lint": "eslint .",
+    "postinstall": "npm run preparer-navigateurs",
     "preparer-navigateurs": "node scripts/telecharger-navigateurs.js",
+    "vscode:prepublish": "npm run preparer-navigateurs",
     "pretest": "npm run lint",
     "test": "vscode-test"
   },

@@ -1,7 +1,9 @@
+const fs = require('fs');
 const path = require('path');
 const {
   Browser,
-  BrowserPlatform,
+  computeExecutablePath,
+  detectBrowserPlatform,
   install
 } = require('@puppeteer/browsers');
 const { PUPPETEER_REVISIONS } = require('puppeteer-core/internal/revisions.js');
@@ -9,27 +11,33 @@ const { PUPPETEER_REVISIONS } = require('puppeteer-core/internal/revisions.js');
 const dossierNavigateurs = path.resolve(__dirname, '..', 'navigateurs-embarques');
 const identifiantVersion = PUPPETEER_REVISIONS.chrome;
 
-const plateformes = [
-  BrowserPlatform.MAC,
-  BrowserPlatform.MAC_ARM,
-  BrowserPlatform.WIN32,
-  BrowserPlatform.WIN64,
-  BrowserPlatform.LINUX,
-  BrowserPlatform.LINUX_ARM
-];
-
 async function principal() {
-  for (const plateforme of plateformes) {
-    console.log(`Installation de Chrome ${identifiantVersion} pour ${plateforme}...`);
-    await install({
-      cacheDir: dossierNavigateurs,
-      browser: Browser.CHROME,
-      buildId: identifiantVersion,
-      platform: plateforme
-    });
+  const plateforme = detectBrowserPlatform();
+  if (!plateforme) {
+    throw new Error('Plateforme non supportee pour le telechargement de Chrome.');
   }
 
-  console.log(`Navigateurs installes dans ${dossierNavigateurs}`);
+  const cheminExecutable = computeExecutablePath({
+    cacheDir: dossierNavigateurs,
+    browser: Browser.CHROME,
+    buildId: identifiantVersion,
+    platform: plateforme
+  });
+
+  if (fs.existsSync(cheminExecutable)) {
+    console.log(`Chrome est deja disponible : ${cheminExecutable}`);
+    return;
+  }
+
+  console.log(`Installation de Chrome ${identifiantVersion} pour ${plateforme}...`);
+  await install({
+    cacheDir: dossierNavigateurs,
+    browser: Browser.CHROME,
+    buildId: identifiantVersion,
+    platform: plateforme
+  });
+
+  console.log(`Navigateur installe dans ${dossierNavigateurs}`);
 }
 
 principal().catch((erreur) => {
