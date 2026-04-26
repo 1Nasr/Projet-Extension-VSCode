@@ -192,7 +192,8 @@ const vscode = acquireVsCodeApi();
 const boutonAllerEnHaut = document.getElementById('boutonAllerEnHaut');
 const boutonExporter = document.getElementById('exportPdf');
 const barreProgressionLecture = document.getElementById('readingProgressBar');
-let ignorerProchainEvenementDefilementApercu = false;
+const TEMPS_BLOCAGE_SCROLL_APERCU_MS = 150;
+let ignorerApercuScrollJusquaMs = 0;
 let dernierEnvoiApercuMs = 0;
 let dernierRatioApercuEnvoye = -1;
 if (boutonAllerEnHaut) {
@@ -223,7 +224,7 @@ function mettreAJourProgressionLecture() {
 }
 
 function synchroniserEditeurDepuisDefilementApercu() {
-  if (ignorerProchainEvenementDefilementApercu) return;
+  if (Date.now() < ignorerApercuScrollJusquaMs) return;
 
   const doc = document.documentElement;
   const scrollableHeight = doc.scrollHeight - doc.clientHeight;
@@ -285,12 +286,16 @@ window.addEventListener('scroll', () => {
 window.addEventListener('message', (event) => {
   const { type, ratio } = event.data;
   if (type === 'scroll') {
-    ignorerProchainEvenementDefilementApercu = true;
     const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-    window.scrollTo({ top: scrollHeight * ratio, behavior: 'auto' });
-    requestAnimationFrame(() => {
-      ignorerProchainEvenementDefilementApercu = false;
-    });
+    const targetTop = Math.max(0, Math.min(scrollHeight, scrollHeight * ratio));
+    const currentTop = window.scrollY || document.documentElement.scrollTop;
+
+    ignorerApercuScrollJusquaMs = Date.now() + TEMPS_BLOCAGE_SCROLL_APERCU_MS;
+
+    if (Math.abs(currentTop - targetTop) > 2) {
+      window.scrollTo({ top: targetTop, behavior: 'smooth' });
+    }
+
     mettreAJourProgressionLecture();
   }
 });

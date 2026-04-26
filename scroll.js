@@ -1,10 +1,10 @@
 const vscode = require('vscode');
 
 function configurerSynchroDefilement(editeur, panneau) {
-  const INTERVALLE_MIN_ENVOI_MS = 50;
+  const INTERVALLE_MIN_ENVOI_MS = 80;
   const INTERVALLE_MIN_APERCU_MS = 50;
-  const FENETRE_BLOCAGE_CODE_VERS_APERCU_MS = 180;
-  const SEUIL_VARIATION_RATIO = 0.003;
+  const FENETRE_BLOCAGE_CODE_VERS_APERCU_MS = 250;
+  const SEUIL_VARIATION_RATIO = 0.0025;
   const SEUIL_VARIATION_LIGNE = 8;
 
   let dernierEnvoiMs = 0;
@@ -64,11 +64,16 @@ function configurerSynchroDefilement(editeur, panneau) {
 
     const document = editeur.document;
 
-    const LOOK_AHEAD = 15;
-    const firstVisibleLine = e.visibleRanges[0].start.line;
-    const ligneCible = Math.min(firstVisibleLine + LOOK_AHEAD, document.lineCount - 1);
+    const LOOK_AHEAD = 0;
+    const visibleRange = e.visibleRanges[0];
+    if (!visibleRange) return;
 
-    if (firstVisibleLine === 0) {
+    const firstVisibleLine = visibleRange.start.line;
+    const lastVisibleLine = visibleRange.end.line;
+    const centerVisibleLine = Math.floor((firstVisibleLine + lastVisibleLine) / 2);
+    const ligneCible = Math.min(centerVisibleLine + LOOK_AHEAD, document.lineCount - 1);
+
+    if (firstVisibleLine === 0 && lastVisibleLine <= 8) {
       if (dernierRatioEnvoye !== 0) {
         panneau.webview.postMessage({ type: 'scroll', ratio: 0 });
         dernierRatioEnvoye = 0;
